@@ -1,11 +1,13 @@
 import Foundation
 import SwiftUI
+internal import Combine
 
 struct FriendAvatarConfig: Codable, Equatable {
     var bodyColorRaw: String
     var mouthRaw: String
     var eyesRaw: String
     var hairRaw: String
+    var furRaw: String
     var itemRaw: String
     var hairHue: Double
     var hairSaturation: Double
@@ -20,6 +22,7 @@ extension FriendAvatarConfig {
             mouthRaw: FriendAvatarMouth.none.rawValue,
             eyesRaw: FriendAvatarEyes.none.rawValue,
             hairRaw: FriendAvatarHair.none.rawValue,
+            furRaw: FriendAvatarFur.none.rawValue,
             itemRaw: FriendAvatarItem.none.rawValue,
             hairHue: 0.0,
             hairSaturation: 0.72,
@@ -42,6 +45,10 @@ extension FriendAvatarConfig {
 
     var hair: FriendAvatarHair {
         FriendAvatarHair(rawValue: hairRaw) ?? .none
+    }
+
+    var fur: FriendAvatarFur {
+        .none
     }
 
     var item: FriendAvatarItem {
@@ -74,9 +81,6 @@ final class FriendHubMultiplayerStore: ObservableObject {
 
     let localPlayerID: String
 
-    private var roomTask: Task<Void, Never>?
-    private let previewFriendID = "local-preview-friend"
-
     init(userDefaults: UserDefaults = .standard) {
         if let savedID = userDefaults.string(forKey: "friendHubPlayerID") {
             localPlayerID = savedID
@@ -98,9 +102,7 @@ final class FriendHubMultiplayerStore: ObservableObject {
             lastSeen: .now
         )
         upsert(localPlayer)
-        addPreviewFriendIfNeeded()
         connectionStatus = "Local room"
-        startPreviewLoop()
     }
 
     func updateLocalAvatar(_ avatar: FriendAvatarConfig) {
@@ -118,8 +120,6 @@ final class FriendHubMultiplayerStore: ObservableObject {
     }
 
     func leave() {
-        roomTask?.cancel()
-        roomTask = nil
         players.removeAll { $0.id == localPlayerID }
         connectionStatus = "Disconnected"
     }
@@ -129,63 +129,6 @@ final class FriendHubMultiplayerStore: ObservableObject {
             players[index] = player
         } else {
             players.append(player)
-        }
-    }
-
-    private func addPreviewFriendIfNeeded() {
-        guard !players.contains(where: { $0.id == previewFriendID }) else { return }
-
-        let previewAvatar = FriendAvatarConfig(
-            bodyColorRaw: FriendAvatarBodyColor.skin8.rawValue,
-            mouthRaw: FriendAvatarMouth.mouth13.rawValue,
-            eyesRaw: FriendAvatarEyes.eyes31.rawValue,
-            hairRaw: FriendAvatarHair.none.rawValue,
-            itemRaw: FriendAvatarItem.none.rawValue,
-            hairHue: 0.08,
-            hairSaturation: 0.64,
-            hairBrightness: 0.34,
-            scarfHue: 0.36
-        )
-        let previewFriend = FriendHubPlayer(
-            id: previewFriendID,
-            name: "Friend",
-            avatar: previewAvatar,
-            x: 0.30,
-            y: 0.62,
-            isMoving: false,
-            lastSeen: .now
-        )
-        players.append(previewFriend)
-    }
-
-    private func startPreviewLoop() {
-        guard roomTask == nil else { return }
-
-        roomTask = Task { [weak self] in
-            var goingRight = true
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2.2))
-                await MainActor.run {
-                    self?.movePreviewFriend(goingRight: goingRight)
-                }
-                goingRight.toggle()
-            }
-        }
-    }
-
-    private func movePreviewFriend(goingRight: Bool) {
-        guard let index = players.firstIndex(where: { $0.id == previewFriendID }) else { return }
-        players[index].x = goingRight ? 0.38 : 0.30
-        players[index].y = goingRight ? 0.58 : 0.62
-        players[index].isMoving = true
-        players[index].lastSeen = .now
-
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(650))
-            await MainActor.run {
-                guard let self, let index = self.players.firstIndex(where: { $0.id == self.previewFriendID }) else { return }
-                self.players[index].isMoving = false
-            }
         }
     }
 }

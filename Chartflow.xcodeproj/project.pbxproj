@@ -6,6 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D6C86C783010477800E6B4E7 /* FriendHubMultiplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C86C773010477800E6B4E7 /* FriendHubMultiplayer.swift */; };
+		D6C86C7D3039F69300E6B4E7 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C7C3039F69300E6B4E7 /* FirebaseAI */; };
+		D6C86C7F3039F69300E6B4E7 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C7E3039F69300E6B4E7 /* FirebaseAILogic */; };
+		D6C86C813039F69300E6B4E7 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C803039F69300E6B4E7 /* FirebaseAnalytics */; };
+		D6C86C833039F69300E6B4E7 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C823039F69300E6B4E7 /* FirebaseAuth */; };
+		D6C86C853039F69300E6B4E7 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C843039F69300E6B4E7 /* FirebaseFirestore */; };
+		D6C86C873039F69300E6B4E7 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C863039F69300E6B4E7 /* FirebaseMessaging */; };
+		D6C86C8A3039F88300E6B4E7 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C893039F88300E6B4E7 /* FirebaseDatabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D605AB542FDCBF4700E817C1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +38,25 @@
 		D605AB462FDCBF4600E817C1 /* Chartflow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chartflow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D605AB532FDCBF4700E817C1 /* ChartflowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChartflowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D605AB5D2FDCBF4700E817C1 /* ChartflowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChartflowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D6C86C773010477800E6B4E7 /* FriendHubMultiplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendHubMultiplayer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D605AB752FDCC4FC00E817C1 /* Exceptions for "Chartflow" folder in "Chartflow" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D605AB452FDCBF4600E817C1 /* Chartflow */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D605AB482FDCBF4600E817C1 /* Chartflow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D605AB752FDCC4FC00E817C1 /* Exceptions for "Chartflow" folder in "Chartflow" target */,
+			);
 			path = Chartflow;
 			sourceTree = "<group>";
 		};
@@ -52,6 +77,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6C86C873039F69300E6B4E7 /* FirebaseMessaging in Frameworks */,
+				D6C86C7F3039F69300E6B4E7 /* FirebaseAILogic in Frameworks */,
+				D6C86C7D3039F69300E6B4E7 /* FirebaseAI in Frameworks */,
+				D6C86C813039F69300E6B4E7 /* FirebaseAnalytics in Frameworks */,
+				D6C86C853039F69300E6B4E7 /* FirebaseFirestore in Frameworks */,
+				D6C86C8A3039F88300E6B4E7 /* FirebaseDatabase in Frameworks */,
+				D6C86C833039F69300E6B4E7 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +111,8 @@
 				D605AB562FDCBF4700E817C1 /* ChartflowTests */,
 				D605AB602FDCBF4700E817C1 /* ChartflowUITests */,
 				D605AB472FDCBF4600E817C1 /* Products */,
+				D6C86C773010477800E6B4E7 /* FriendHubMultiplayer.swift */,
+				D6C86C883039F88300E6B4E7 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -90,6 +124,13 @@
 				D605AB5D2FDCBF4700E817C1 /* ChartflowUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D6C86C883039F88300E6B4E7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +153,13 @@
 			);
 			name = Chartflow;
 			packageProductDependencies = (
+				D6C86C7C3039F69300E6B4E7 /* FirebaseAI */,
+				D6C86C7E3039F69300E6B4E7 /* FirebaseAILogic */,
+				D6C86C803039F69300E6B4E7 /* FirebaseAnalytics */,
+				D6C86C823039F69300E6B4E7 /* FirebaseAuth */,
+				D6C86C843039F69300E6B4E7 /* FirebaseFirestore */,
+				D6C86C863039F69300E6B4E7 /* FirebaseMessaging */,
+				D6C86C893039F88300E6B4E7 /* FirebaseDatabase */,
 			);
 			productName = Chartflow;
 			productReference = D605AB462FDCBF4600E817C1 /* Chartflow.app */;
@@ -195,6 +243,9 @@
 			);
 			mainGroup = D605AB3D2FDCBF4600E817C1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D605AB472FDCBF4600E817C1 /* Products */;
 			projectDirPath = "";
@@ -236,6 +287,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6C86C783010477800E6B4E7 /* FriendHubMultiplayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,12 +440,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chartflow/Chartflow.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A49BCR8Y57;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chartflow/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -408,19 +464,21 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.Chartflow;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyDoof.Chartflow;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
@@ -430,12 +488,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chartflow/Chartflow.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A49BCR8Y57;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chartflow/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -450,19 +512,21 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.Chartflow;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyDoof.Chartflow;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
@@ -605,6 +669,55 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D6C86C7C3039F69300E6B4E7 /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		D6C86C7E3039F69300E6B4E7 /* FirebaseAILogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAILogic;
+		};
+		D6C86C803039F69300E6B4E7 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		D6C86C823039F69300E6B4E7 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		D6C86C843039F69300E6B4E7 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		D6C86C863039F69300E6B4E7 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		D6C86C893039F88300E6B4E7 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D605AB3E2FDCBF4600E817C1 /* Project object */;
 }

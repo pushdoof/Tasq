@@ -13,7 +13,7 @@ struct ChartEvent: Identifiable, Codable, Equatable {
     }
 }
 
-enum ChartLayoutDirection: String, Codable, Equatable {
+enum ChartLayoutDirection: String, Codable, Equatable, Hashable {
     case leftToRight
     case topToBottom
 }
