@@ -1,13 +1,13 @@
 //
-//  ChartflowUITestsLaunchTests.swift
-//  ChartflowUITests
+//  TasqUITestsLaunchTests.swift
+//  TasqUITests
 //
 //  Created by Pushya Dutt on 6/12/26.
 //
 
 import XCTest
 
-final class ChartflowUITestsLaunchTests: XCTestCase {
+final class TasqUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

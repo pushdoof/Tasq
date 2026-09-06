@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseCore
+internal import Combine
 #if canImport(GoogleSignIn)
 import GoogleSignIn
 #endif
@@ -64,7 +65,7 @@ final class AuthenticationStore: ObservableObject {
 
         await runAuthAction {
             try await Auth.auth().sendPasswordReset(withEmail: trimmedEmail)
-            errorMessage = "Password reset email sent."
+            self.errorMessage = "Password reset email sent."
         }
     }
 
@@ -100,7 +101,7 @@ final class AuthenticationStore: ObservableObject {
             _ = try await Auth.auth().signIn(with: credential)
         }
         #else
-        errorMessage = "Google sign-in needs the GoogleSignIn Swift package added to the Chartflow app target."
+        errorMessage = "Google sign-in needs the GoogleSignIn Swift package added to the Tasq app target."
         #endif
     }
 
@@ -163,7 +164,7 @@ struct AuthenticationView: View {
                     Spacer(minLength: 28)
 
                     VStack(spacing: 10) {
-                        Text("Chartflow")
+                        Text("Tasq")
                             .font(.custom("ChartflowHand-Regular", size: 48))
                             .fontWeight(.black)
                             .foregroundStyle(Color.chartflowText)
@@ -197,7 +198,7 @@ struct AuthenticationView: View {
                                     ProgressView()
                                         .tint(Color.chartflowBackground)
                                 } else {
-                                    Image(systemName: isCreatingAccount ? "person.badge.plus.fill" : "person.fill.checkmark")
+                                    TasqIcon(isCreatingAccount ? "person.badge.plus.fill" : "person.fill.checkmark", size: 22)
                                 }
 
                                 Text(isCreatingAccount ? "Create Account" : "Sign In")
@@ -216,7 +217,7 @@ struct AuthenticationView: View {
                             Task { await authStore.signInWithGoogle() }
                         } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: "g.circle.fill")
+                                TasqIcon("g.circle.fill", size: 22)
                                 Text("Continue with Google")
                             }
                             .font(.custom("ChartflowHand-Regular", size: 22))
@@ -296,9 +297,8 @@ private struct AuthTextField: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .frame(width: 24)
+            TasqIcon(systemImage, size: 18)
+                .frame(width: 30)
 
             TextField(title, text: $text)
                 .keyboardType(keyboardType)
@@ -325,9 +325,8 @@ private struct AuthSecureField: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .frame(width: 24)
+            TasqIcon("lock.fill", size: 18)
+                .frame(width: 30)
 
             SecureField(title, text: $text)
                 .textContentType(.password)

@@ -30,7 +30,7 @@ enum BoxMovementEffect: String, CaseIterable, Identifiable {
     }
 }
 
-enum ChartflowBackgroundPattern: String, CaseIterable, Identifiable {
+enum TasqBackgroundPattern: String, CaseIterable, Identifiable {
     case dots
     case squares
     case bigCircles
@@ -256,7 +256,7 @@ struct DoodlyRectangle: Shape {
     }
 }
 
-struct ChartflowBoxBackground: View {
+struct TasqBoxBackground: View {
     var cornerRadius: CGFloat = 16
     var wobble: CGFloat = 2
     var fillColor: Color
@@ -270,7 +270,16 @@ struct ChartflowBoxBackground: View {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 0.12)) { timeline in
+        let effect = BoxMovementEffect(rawValue: boxMovementEffectRaw) ?? .doodle
+        let motionIsReduced = reduceBoxMotion || systemReduceMotion
+        let interval = effect == .flow ? 1.0 / 30.0 : 1.0 / 7.0
+
+        TimelineView(
+            .animation(
+                minimumInterval: interval,
+                paused: motionIsReduced || effect == .none
+            )
+        ) { timeline in
             let shape = currentShape(for: timeline.date)
             let effectiveStrokeColor = highContrastBoxes ? Color.chartflowText : strokeColor
             let effectiveLineWidth = highContrastBoxes ? max(lineWidth, 2.5) : lineWidth
@@ -293,7 +302,7 @@ struct ChartflowBoxBackground: View {
 
         switch effect {
         case .doodle:
-            let phase = motionIsReduced ? 0 : CGFloat(Int(time * 7)) * 1.15
+            let phase = motionIsReduced ? 0 : CGFloat(Int((time * 7).rounded())) * 1.15
             return AnyShape(WobblyRectangle(cornerRadius: cornerRadius, wobble: wobble * 1.35, phase: phase))
         case .flow:
             let phase = motionIsReduced ? 0 : CGFloat(time * 2.2)
@@ -314,7 +323,7 @@ extension View {
         inset: CGFloat = 1
     ) -> some View {
         background(
-            ChartflowBoxBackground(
+            TasqBoxBackground(
                 cornerRadius: cornerRadius,
                 wobble: wobble,
                 fillColor: fillColor,

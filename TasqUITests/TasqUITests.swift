@@ -1,13 +1,13 @@
 //
-//  ChartflowUITests.swift
-//  ChartflowUITests
+//  TasqUITests.swift
+//  TasqUITests
 //
 //  Created by Pushya Dutt on 6/12/26.
 //
 
 import XCTest
 
-final class ChartflowUITests: XCTestCase {
+final class TasqUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

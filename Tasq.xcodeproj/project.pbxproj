@@ -15,6 +15,7 @@
 		D6C86C853039F69300E6B4E7 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C843039F69300E6B4E7 /* FirebaseFirestore */; };
 		D6C86C873039F69300E6B4E7 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C863039F69300E6B4E7 /* FirebaseMessaging */; };
 		D6C86C8A3039F88300E6B4E7 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86C893039F88300E6B4E7 /* FirebaseDatabase */; };
+		D6C86D23303E649C00E6B4E7 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D6C86D22303E649C00E6B4E7 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,51 +24,51 @@
 			containerPortal = D605AB3E2FDCBF4600E817C1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D605AB452FDCBF4600E817C1;
-			remoteInfo = Chartflow;
+			remoteInfo = Tasq;
 		};
 		D605AB5E2FDCBF4700E817C1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D605AB3E2FDCBF4600E817C1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D605AB452FDCBF4600E817C1;
-			remoteInfo = Chartflow;
+			remoteInfo = Tasq;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		D605AB462FDCBF4600E817C1 /* Chartflow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chartflow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D605AB532FDCBF4700E817C1 /* ChartflowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChartflowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D605AB5D2FDCBF4700E817C1 /* ChartflowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChartflowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D605AB462FDCBF4600E817C1 /* Tasq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tasq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D605AB532FDCBF4700E817C1 /* TasqTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TasqTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D605AB5D2FDCBF4700E817C1 /* TasqUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TasqUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6C86C773010477800E6B4E7 /* FriendHubMultiplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendHubMultiplayer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		D605AB752FDCC4FC00E817C1 /* Exceptions for "Chartflow" folder in "Chartflow" target */ = {
+		D605AB752FDCC4FC00E817C1 /* Exceptions for "Tasq" folder in "Tasq" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = D605AB452FDCBF4600E817C1 /* Chartflow */;
+			target = D605AB452FDCBF4600E817C1 /* Tasq */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		D605AB482FDCBF4600E817C1 /* Chartflow */ = {
+		D605AB482FDCBF4600E817C1 /* Tasq */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D605AB752FDCC4FC00E817C1 /* Exceptions for "Chartflow" folder in "Chartflow" target */,
+				D605AB752FDCC4FC00E817C1 /* Exceptions for "Tasq" folder in "Tasq" target */,
 			);
-			path = Chartflow;
+			path = Tasq;
 			sourceTree = "<group>";
 		};
-		D605AB562FDCBF4700E817C1 /* ChartflowTests */ = {
+		D605AB562FDCBF4700E817C1 /* TasqTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ChartflowTests;
+			path = TasqTests;
 			sourceTree = "<group>";
 		};
-		D605AB602FDCBF4700E817C1 /* ChartflowUITests */ = {
+		D605AB602FDCBF4700E817C1 /* TasqUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ChartflowUITests;
+			path = TasqUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -78,6 +79,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D6C86C873039F69300E6B4E7 /* FirebaseMessaging in Frameworks */,
+				D6C86D23303E649C00E6B4E7 /* GoogleSignIn in Frameworks */,
 				D6C86C7F3039F69300E6B4E7 /* FirebaseAILogic in Frameworks */,
 				D6C86C7D3039F69300E6B4E7 /* FirebaseAI in Frameworks */,
 				D6C86C813039F69300E6B4E7 /* FirebaseAnalytics in Frameworks */,
@@ -107,9 +109,9 @@
 		D605AB3D2FDCBF4600E817C1 = {
 			isa = PBXGroup;
 			children = (
-				D605AB482FDCBF4600E817C1 /* Chartflow */,
-				D605AB562FDCBF4700E817C1 /* ChartflowTests */,
-				D605AB602FDCBF4700E817C1 /* ChartflowUITests */,
+				D605AB482FDCBF4600E817C1 /* Tasq */,
+				D605AB562FDCBF4700E817C1 /* TasqTests */,
+				D605AB602FDCBF4700E817C1 /* TasqUITests */,
 				D605AB472FDCBF4600E817C1 /* Products */,
 				D6C86C773010477800E6B4E7 /* FriendHubMultiplayer.swift */,
 				D6C86C883039F88300E6B4E7 /* Frameworks */,
@@ -119,9 +121,9 @@
 		D605AB472FDCBF4600E817C1 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D605AB462FDCBF4600E817C1 /* Chartflow.app */,
-				D605AB532FDCBF4700E817C1 /* ChartflowTests.xctest */,
-				D605AB5D2FDCBF4700E817C1 /* ChartflowUITests.xctest */,
+				D605AB462FDCBF4600E817C1 /* Tasq.app */,
+				D605AB532FDCBF4700E817C1 /* TasqTests.xctest */,
+				D605AB5D2FDCBF4700E817C1 /* TasqUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -136,9 +138,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		D605AB452FDCBF4600E817C1 /* Chartflow */ = {
+		D605AB452FDCBF4600E817C1 /* Tasq */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D605AB672FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "Chartflow" */;
+			buildConfigurationList = D605AB672FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "Tasq" */;
 			buildPhases = (
 				D605AB422FDCBF4600E817C1 /* Sources */,
 				D605AB432FDCBF4600E817C1 /* Frameworks */,
@@ -149,9 +151,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				D605AB482FDCBF4600E817C1 /* Chartflow */,
+				D605AB482FDCBF4600E817C1 /* Tasq */,
 			);
-			name = Chartflow;
+			name = Tasq;
 			packageProductDependencies = (
 				D6C86C7C3039F69300E6B4E7 /* FirebaseAI */,
 				D6C86C7E3039F69300E6B4E7 /* FirebaseAILogic */,
@@ -160,14 +162,15 @@
 				D6C86C843039F69300E6B4E7 /* FirebaseFirestore */,
 				D6C86C863039F69300E6B4E7 /* FirebaseMessaging */,
 				D6C86C893039F88300E6B4E7 /* FirebaseDatabase */,
+				D6C86D22303E649C00E6B4E7 /* GoogleSignIn */,
 			);
-			productName = Chartflow;
-			productReference = D605AB462FDCBF4600E817C1 /* Chartflow.app */;
+			productName = Tasq;
+			productReference = D605AB462FDCBF4600E817C1 /* Tasq.app */;
 			productType = "com.apple.product-type.application";
 		};
-		D605AB522FDCBF4700E817C1 /* ChartflowTests */ = {
+		D605AB522FDCBF4700E817C1 /* TasqTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D605AB6A2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "ChartflowTests" */;
+			buildConfigurationList = D605AB6A2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "TasqTests" */;
 			buildPhases = (
 				D605AB4F2FDCBF4700E817C1 /* Sources */,
 				D605AB502FDCBF4700E817C1 /* Frameworks */,
@@ -179,18 +182,18 @@
 				D605AB552FDCBF4700E817C1 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D605AB562FDCBF4700E817C1 /* ChartflowTests */,
+				D605AB562FDCBF4700E817C1 /* TasqTests */,
 			);
-			name = ChartflowTests;
+			name = TasqTests;
 			packageProductDependencies = (
 			);
-			productName = ChartflowTests;
-			productReference = D605AB532FDCBF4700E817C1 /* ChartflowTests.xctest */;
+			productName = TasqTests;
+			productReference = D605AB532FDCBF4700E817C1 /* TasqTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		D605AB5C2FDCBF4700E817C1 /* ChartflowUITests */ = {
+		D605AB5C2FDCBF4700E817C1 /* TasqUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D605AB6D2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "ChartflowUITests" */;
+			buildConfigurationList = D605AB6D2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "TasqUITests" */;
 			buildPhases = (
 				D605AB592FDCBF4700E817C1 /* Sources */,
 				D605AB5A2FDCBF4700E817C1 /* Frameworks */,
@@ -202,13 +205,13 @@
 				D605AB5F2FDCBF4700E817C1 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D605AB602FDCBF4700E817C1 /* ChartflowUITests */,
+				D605AB602FDCBF4700E817C1 /* TasqUITests */,
 			);
-			name = ChartflowUITests;
+			name = TasqUITests;
 			packageProductDependencies = (
 			);
-			productName = ChartflowUITests;
-			productReference = D605AB5D2FDCBF4700E817C1 /* ChartflowUITests.xctest */;
+			productName = TasqUITests;
+			productReference = D605AB5D2FDCBF4700E817C1 /* TasqUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -234,7 +237,7 @@
 					};
 				};
 			};
-			buildConfigurationList = D605AB412FDCBF4600E817C1 /* Build configuration list for PBXProject "Chartflow" */;
+			buildConfigurationList = D605AB412FDCBF4600E817C1 /* Build configuration list for PBXProject "Tasq" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -245,15 +248,16 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				D6C86D21303E649C00E6B4E7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D605AB472FDCBF4600E817C1 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				D605AB452FDCBF4600E817C1 /* Chartflow */,
-				D605AB522FDCBF4700E817C1 /* ChartflowTests */,
-				D605AB5C2FDCBF4700E817C1 /* ChartflowUITests */,
+				D605AB452FDCBF4600E817C1 /* Tasq */,
+				D605AB522FDCBF4700E817C1 /* TasqTests */,
+				D605AB5C2FDCBF4700E817C1 /* TasqUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -310,12 +314,12 @@
 /* Begin PBXTargetDependency section */
 		D605AB552FDCBF4700E817C1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D605AB452FDCBF4600E817C1 /* Chartflow */;
+			target = D605AB452FDCBF4600E817C1 /* Tasq */;
 			targetProxy = D605AB542FDCBF4700E817C1 /* PBXContainerItemProxy */;
 		};
 		D605AB5F2FDCBF4700E817C1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D605AB452FDCBF4600E817C1 /* Chartflow */;
+			target = D605AB452FDCBF4600E817C1 /* Tasq */;
 			targetProxy = D605AB5E2FDCBF4700E817C1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -440,7 +444,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chartflow/Chartflow.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Tasq/Tasq.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -449,7 +453,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Chartflow/Info.plist;
+				INFOPLIST_FILE = Tasq/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -488,7 +492,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Chartflow/Chartflow.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Tasq/Tasq.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -497,7 +501,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Chartflow/Info.plist;
+				INFOPLIST_FILE = Tasq/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -541,7 +545,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.ChartflowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.TasqTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -551,7 +555,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chartflow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chartflow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tasq.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tasq";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
@@ -566,7 +570,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.ChartflowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.TasqTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -576,7 +580,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chartflow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chartflow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tasq.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tasq";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
@@ -590,7 +594,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.ChartflowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.TasqUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -600,7 +604,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = Chartflow;
+				TEST_TARGET_NAME = Tasq;
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
@@ -614,7 +618,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.ChartflowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PushyaDutt.TasqUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -624,7 +628,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = Chartflow;
+				TEST_TARGET_NAME = Tasq;
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
@@ -632,7 +636,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		D605AB412FDCBF4600E817C1 /* Build configuration list for PBXProject "Chartflow" */ = {
+		D605AB412FDCBF4600E817C1 /* Build configuration list for PBXProject "Tasq" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D605AB652FDCBF4700E817C1 /* Debug */,
@@ -641,7 +645,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D605AB672FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "Chartflow" */ = {
+		D605AB672FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "Tasq" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D605AB682FDCBF4700E817C1 /* Debug */,
@@ -650,7 +654,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D605AB6A2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "ChartflowTests" */ = {
+		D605AB6A2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "TasqTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D605AB6B2FDCBF4700E817C1 /* Debug */,
@@ -659,7 +663,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D605AB6D2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "ChartflowUITests" */ = {
+		D605AB6D2FDCBF4700E817C1 /* Build configuration list for PBXNativeTarget "TasqUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D605AB6E2FDCBF4700E817C1 /* Debug */,
@@ -677,6 +681,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.18.0;
+			};
+		};
+		D6C86D21303E649C00E6B4E7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.2.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -716,6 +728,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D6C86C7B3039F69300E6B4E7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseDatabase;
+		};
+		D6C86D22303E649C00E6B4E7 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6C86D21303E649C00E6B4E7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

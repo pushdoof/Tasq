@@ -1,6 +1,6 @@
 //
 //  OnboardingView.swift
-//  Chartflow
+//  Tasq
 //
 
 import SwiftUI
@@ -29,10 +29,10 @@ struct OnboardingView: View {
 
     let steps: [OnboardingStep] = [
         OnboardingStep(
-            title: "Welcome to Chartflow",
+            title: "Welcome to Tasq",
             subtitle: "Your daily routines, visualized as a flowchart.",
             icon: "hand.wave.fill",
-            description: "Chartflow helps you build, time, and follow through on your daily routines; one task at a time."
+            description: "Tasq helps you build, time, and follow through on your daily routines; one task at a time."
         ),
         OnboardingStep(
             title: "Your Routines",
@@ -93,8 +93,7 @@ struct OnboardingView: View {
                                 .stroke(Color.chartflowText, lineWidth: 2.5)
                                 .id(refreshTrigger)
                         )
-                    Image(systemName: steps[currentStep].icon)
-                        .font(.system(size: 46))
+                    TasqIcon(steps[currentStep].icon, size: 46)
                         .foregroundStyle(Color.chartflowText)
                 }
                 .padding(.bottom, 36)

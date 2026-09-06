@@ -87,7 +87,11 @@ struct DynamicScheduleWizardView: View {
                     withAnimation { step = previous }
                 }
             } label: {
-                Label("Back", systemImage: "chevron.left")
+                Label {
+                    Text("Back")
+                } icon: {
+                    TasqIcon("chevron.left", size: 18)
+                }
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -101,7 +105,11 @@ struct DynamicScheduleWizardView: View {
                     completeSetup()
                 }
             } label: {
-                Label(isLastStep ? "Done" : "Next", systemImage: isLastStep ? "checkmark.circle.fill" : "chevron.right")
+                Label {
+                    Text(isLastStep ? "Done" : "Next")
+                } icon: {
+                    TasqIcon(isLastStep ? "checkmark.circle.fill" : "chevron.right", size: 18)
+                }
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -145,7 +153,7 @@ struct DynamicScheduleWizardView: View {
                                 chart.dynamicConfiguration?.dailyTasks.remove(at: index)
                                 chart.regenerateDynamicEvents()
                             } label: {
-                                Image(systemName: "minus.circle.fill")
+                                TasqIcon("minus.circle.fill", size: 20)
                             }
                             .buttonStyle(.borderless)
                         }
@@ -159,7 +167,11 @@ struct DynamicScheduleWizardView: View {
                 )
                 chart.regenerateDynamicEvents()
             } label: {
-                Label("Add Daily Thing", systemImage: "plus.circle.fill")
+                Label {
+                    Text("Add Daily Thing")
+                } icon: {
+                    TasqIcon("plus.circle.fill", size: 18)
+                }
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -204,7 +216,11 @@ struct DynamicScheduleWizardView: View {
             Button {
                 chart.regenerateDynamicEvents()
             } label: {
-                Label("Regenerate", systemImage: "arrow.triangle.2.circlepath")
+                Label {
+                    Text("Regenerate")
+                } icon: {
+                    TasqIcon("arrow.triangle.2.circlepath", size: 18)
+                }
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -340,19 +356,27 @@ struct DynamicScheduleTaskRow: View {
                     Button(role: .destructive) {
                         onDelete()
                     } label: {
-                        Image(systemName: "minus.circle.fill")
+                        TasqIcon("minus.circle.fill", size: 20)
                     }
                     .buttonStyle(.borderless)
                 }
             }
 
             Stepper(value: $task.timeRank, in: 1...5) {
-                Label("Time rank: \(task.timeRank)", systemImage: "clock")
+                Label {
+                    Text("Time rank: \(task.timeRank)")
+                } icon: {
+                    TasqIcon("clock", size: 17)
+                }
             }
             .onChange(of: task.timeRank) { _, _ in onChange() }
 
             Stepper(value: $task.importanceRank, in: 1...5) {
-                Label("Importance: \(task.importanceRank)", systemImage: "exclamationmark.circle")
+                Label {
+                    Text("Importance: \(task.importanceRank)")
+                } icon: {
+                    TasqIcon("exclamationmark.circle", size: 17)
+                }
             }
             .onChange(of: task.importanceRank) { _, _ in onChange() }
 

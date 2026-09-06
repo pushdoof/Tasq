@@ -1,6 +1,6 @@
 //
 //  ChartEditorView.swift
-//  Chartflow
+//  Tasq
 //
 
 import SwiftUI
@@ -34,16 +34,18 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Observab
 
 struct ChartEditorView: View {
     @Binding var chart: Chart
+    let defaultZoom: Double
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var progressStore: UserProgressStore
     @StateObject private var notificationDelegate = NotificationDelegate()
-    @AppStorage("defaultZoom") private var defaultZoom: Double = 1.3
     @State private var zoomScale: CGFloat = 1.3
     @State private var isEditingAll = false
     @State private var isEditingTitle = false
     @State private var showSideMenu = false
     @State private var optionSelected = false
     @State private var showAlarmPicker = false
+    @State private var showDynamicSetupWizard = false
     @State private var alarmHour = 7
     @State private var alarmMinute = 0
     @State private var alarmIsAM = true
@@ -104,7 +106,7 @@ struct ChartEditorView: View {
         guard chart.events.indices.contains(index) else { return }
         let event = chart.events[index]
         let content = UNMutableNotificationContent()
-        content.title = "Chartflow"
+        content.title = "Tasq"
         content.body = isFirstVisibleTask
             ? "Starting: \(event.name.isEmpty ? "Task \(index + 1)" : event.name)"
             : "Time for: \(event.name.isEmpty ? "Task \(index + 1)" : event.name)"
@@ -117,7 +119,7 @@ struct ChartEditorView: View {
 
     func scheduleRoutineCompleteNotification(after delay: TimeInterval = 1, identifier: String = "routine-complete-now") {
         let content = UNMutableNotificationContent()
-        content.title = "Chartflow"
+        content.title = "Tasq"
         content.body = "All tasks complete in \(chart.name)."
         content.sound = .default
         content.interruptionLevel = .timeSensitive
@@ -138,7 +140,7 @@ struct ChartEditorView: View {
         components.hour = h
         components.minute = minute
         let content = UNMutableNotificationContent()
-        content.title = "Chartflow"
+        content.title = "Tasq"
         content.body = "Time to start \(chart.name)!"
         content.sound = UNNotificationSound(named: UNNotificationSoundName("alarm_loop.caf"))
         content.interruptionLevel = .timeSensitive
@@ -461,8 +463,7 @@ struct ChartEditorView: View {
                         }
                         haptic.impactOccurred()
                     } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 22))
+                        TasqIcon("line.3.horizontal", size: 22)
                             .foregroundStyle(Color.chartflowText)
                     }
                     .padding(.leading, 20)
@@ -498,8 +499,7 @@ struct ChartEditorView: View {
                         isEditingTitle.toggle()
                         haptic.impactOccurred()
                     } label: {
-                        Image(systemName: isEditingTitle ? "checkmark.circle" : "pencil.circle")
-                            .font(.system(size: 20))
+                        TasqIcon(isEditingTitle ? "checkmark.circle" : "pencil.circle", size: 20)
                             .foregroundStyle(Color.chartflowSecondaryText)
                     }
                 }
@@ -507,6 +507,29 @@ struct ChartEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 8)
+
+                if chart.scheduleType == .dynamic {
+                    Button {
+                        showDynamicSetupWizard = true
+                        haptic.impactOccurred()
+                    } label: {
+                        Label {
+                            Text("Dynamic Setup")
+                        } icon: {
+                            TasqIcon("wand.and.stars", size: 17)
+                        }
+                            .font(.custom("ChartflowHand-Regular", size: 17))
+                            .fontWeight(boldText ? .bold : .regular)
+                            .foregroundStyle(isRunning ? Color.gray.opacity(0.5) : Color.chartflowText)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .chartflowBox(cornerRadius: 12, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isRunning)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                }
 
                 GeometryReader { geometry in
                     ScrollView([.vertical, .horizontal]) {
@@ -592,8 +615,7 @@ struct ChartEditorView: View {
                         withAnimation { zoomScale = max(0.5, zoomScale - 0.1) }
                         haptic.impactOccurred()
                     } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                            .font(.system(size: 20))
+                        TasqIcon("minus.magnifyingglass", size: 20)
                     }
 
                     Text("\(Int(zoomScale * 100))%")
@@ -604,8 +626,7 @@ struct ChartEditorView: View {
                         withAnimation { zoomScale = min(2.0, zoomScale + 0.1) }
                         haptic.impactOccurred()
                     } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                            .font(.system(size: 20))
+                        TasqIcon("plus.magnifyingglass", size: 20)
                     }
                 }
                 .padding(.top, 12)
@@ -618,8 +639,7 @@ struct ChartEditorView: View {
                             haptic.impactOccurred()
                         }
                     } label: {
-                        Image(systemName: isEditingAll ? "checkmark.circle.fill" : "pencil.circle.fill")
-                            .font(.system(size: 44))
+                        TasqIcon(isEditingAll ? "checkmark.circle.fill" : "pencil.circle.fill", size: 44)
                             .foregroundStyle(isRunning ? Color.gray.opacity(0.4) : (isEditingAll ? Color.blue : Color.chartflowText))
                             .background(Color.chartflowSurface)
                             .clipShape(Circle())
@@ -640,8 +660,7 @@ struct ChartEditorView: View {
                             }
                             haptic.impactOccurred()
                         } label: {
-                            Image(systemName: isPaused ? "playpause.circle.fill" : "pause.circle.fill")
-                                .font(.system(size: 44))
+                            TasqIcon(isPaused ? "playpause.circle.fill" : "pause.circle.fill", size: 44)
                                 .foregroundStyle(Color.chartflowText)
                                 .background(Color.chartflowSurface)
                                 .clipShape(Circle())
@@ -662,8 +681,7 @@ struct ChartEditorView: View {
                         }
                         haptic.impactOccurred()
                     } label: {
-                        Image(systemName: isRunning ? "stop.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 44))
+                        TasqIcon(isRunning ? "stop.circle.fill" : "play.circle.fill", size: 44)
                             .foregroundStyle(Color.chartflowText)
                             .background(Color.chartflowSurface)
                             .clipShape(Circle())
@@ -787,6 +805,10 @@ struct ChartEditorView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
+            chart.ensureDynamicConfiguration()
+            if chart.scheduleType == .dynamic && chart.dynamicConfiguration?.setupCompleted == false {
+                showDynamicSetupWizard = true
+            }
             zoomScale = CGFloat(defaultZoom)
             requestNotificationPermission()
             UNUserNotificationCenter.current().delegate = notificationDelegate
@@ -799,6 +821,7 @@ struct ChartEditorView: View {
         }
         .onDisappear {
             saveActiveRoutineSnapshot()
+            progressStore.commitSave()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active && isRunning && !isPaused {
@@ -813,6 +836,10 @@ struct ChartEditorView: View {
                 startTimer()
                 notificationDelegate.shouldStartTimer = false
             }
+        }
+        .sheet(isPresented: $showDynamicSetupWizard) {
+            DynamicScheduleWizardView(chart: $chart)
+                .interactiveDismissDisabled(chart.dynamicConfiguration?.setupCompleted == false)
         }
         .sheet(isPresented: $showAlarmPicker) {
             VStack(spacing: 16) {
@@ -894,8 +921,7 @@ struct AlarmBlockView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Image(systemName: "alarm.fill")
-                .font(.system(size: 14))
+            TasqIcon("alarm.fill", size: 14)
                 .foregroundStyle(Color.chartflowSecondaryText)
             Text("Alarm")
                 .font(.custom("ChartflowHand-Regular", size: largerText ? 16 : 14))
@@ -916,10 +942,10 @@ struct AlarmBlockView: View {
 struct PolkaDotBackground: View {
     let dotSize: CGFloat = 4
     let spacing: CGFloat = 24
-    @AppStorage("backgroundPattern") private var backgroundPatternRaw = ChartflowBackgroundPattern.dots.rawValue
+    @AppStorage("backgroundPattern") private var backgroundPatternRaw = TasqBackgroundPattern.dots.rawValue
 
     var body: some View {
-        let pattern = ChartflowBackgroundPattern(rawValue: backgroundPatternRaw) ?? .dots
+        let pattern = TasqBackgroundPattern(rawValue: backgroundPatternRaw) ?? .dots
 
         ZStack {
             Color.chartflowBackground
@@ -1071,8 +1097,7 @@ struct FlowNodeView: View {
                     Button {
                         onAdd()
                     } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 18))
+                        TasqIcon("plus.circle.fill", size: 18)
                             .foregroundStyle(Color.chartflowText)
                             .background(Color.chartflowSurface)
                             .clipShape(Circle())
@@ -1085,8 +1110,7 @@ struct FlowNodeView: View {
                     Button {
                         onDelete()
                     } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: isSubtask ? 14 : 18))
+                        TasqIcon("minus.circle.fill", size: isSubtask ? 14 : 18)
                             .foregroundStyle(.red)
                             .background(Color.chartflowSurface)
                             .clipShape(Circle())
@@ -1154,8 +1178,7 @@ struct FlowNodeView: View {
                     event.subtasks.append(newSubtask)
                     haptic.impactOccurred()
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 10))
+                    TasqIcon("plus", size: 10)
                         .foregroundStyle(.gray.opacity(0.5))
                 }
             }
@@ -1201,8 +1224,7 @@ struct ConnectorView: View {
                 Rectangle()
                     .fill(Color.chartflowText)
                     .frame(width: 16, height: 2)
-                Image(systemName: "arrowtriangle.right.fill")
-                    .font(.system(size: 10))
+                TasqIcon("arrowtriangle.right.fill", size: 10)
                     .foregroundStyle(Color.chartflowText)
                     .offset(x: -4)
             }
@@ -1211,8 +1233,7 @@ struct ConnectorView: View {
                 Rectangle()
                     .fill(Color.chartflowText)
                     .frame(width: 2, height: 16)
-                Image(systemName: "arrowtriangle.down.fill")
-                    .font(.system(size: 10))
+                TasqIcon("arrowtriangle.down.fill", size: 10)
                     .foregroundStyle(Color.chartflowText)
                     .offset(y: -4)
             }
@@ -1221,5 +1242,5 @@ struct ConnectorView: View {
 }
 
 #Preview {
-    ChartEditorView(chart: .constant(Chart.sample))
+    ChartEditorView(chart: .constant(Chart.sample), defaultZoom: 1.3)
 }

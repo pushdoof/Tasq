@@ -1,9 +1,12 @@
 import SwiftUI
+import FirebaseAuth
+import PhotosUI
+import UIKit
 internal import Combine
 
 struct MindflowHomeScreen: View {
     @Binding var charts: [Chart]
-    @AppStorage("defaultZoom") private var defaultZoom: Double = 1.3
+    @Binding var defaultZoom: Double
     @State private var showSettingsSheet = false
     @State private var showFriendHub = false
 
@@ -25,7 +28,7 @@ struct MindflowHomeScreen: View {
                 VStack(spacing: 18) {
                     Spacer(minLength: 32)
 
-                    Text("Mindflow")
+                    Text("Tasq")
                         .font(.custom("ChartflowHand-Regular", size: 48))
                         .fontWeight(.black)
                         .foregroundStyle(Color.chartflowText)
@@ -45,7 +48,7 @@ struct MindflowHomeScreen: View {
 
                     VStack(spacing: 14) {
                         NavigationLink {
-                            HomeScreen(charts: $charts)
+                            HomeScreen(charts: $charts, defaultZoom: $defaultZoom)
                         } label: {
                             MindflowHomeButton(title: "Chartflow", systemImage: "list.bullet.rectangle.fill")
                         }
@@ -160,9 +163,8 @@ struct MindflowHomeButton: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.system(size: 24, weight: .semibold))
-                .frame(width: 32)
+            TasqIcon(systemImage, size: 24)
+                .frame(width: 40)
 
             Text(title)
                 .font(.custom("ChartflowHand-Regular", size: 28))
@@ -172,8 +174,7 @@ struct MindflowHomeButton: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 18, weight: .bold))
+            TasqIcon("chevron.right", size: 18)
         }
         .foregroundStyle(Color.chartflowText)
         .frame(maxWidth: .infinity, minHeight: 78)
@@ -184,12 +185,14 @@ struct MindflowHomeButton: View {
 
 struct HomeScreen: View {
     @Binding var charts: [Chart]
+    @Binding var defaultZoom: Double
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("defaultZoom") private var defaultZoom: Double = 1.3
+    @EnvironmentObject private var progressStore: UserProgressStore
     @State private var isDeleteMode = false
     @State private var showDeleteConfirmation = false
     @State private var chartToDelete: Chart? = nil
     @State private var showOnboardingSheet = false
+    @State private var showScheduleTypeSheet = false
 
     let cardHeight: CGFloat = 72
     let cardSpacing: CGFloat = 16
@@ -206,12 +209,11 @@ struct HomeScreen: View {
                             Button {
                                 dismiss()
                             } label: {
-                                Image(systemName: "house.fill")
-                                    .font(.system(size: 22))
+                                TasqIcon("house.fill", size: 22)
                                     .foregroundStyle(Color.chartflowText)
                             }
                             .padding(.leading, 20)
-                            .accessibilityLabel("Back to Mindflow")
+                            .accessibilityLabel("Back to Tasq")
 
                             Spacer(minLength: 0)
                             Text("Chartflow")
@@ -222,8 +224,7 @@ struct HomeScreen: View {
                             Button {
                                 showOnboardingSheet = true
                             } label: {
-                                Image(systemName: "questionmark.circle")
-                                    .font(.system(size: 22))
+                                TasqIcon("questionmark.circle", size: 22)
                                     .foregroundStyle(Color.chartflowText)
                             }
                             .padding(.trailing, 20)
@@ -249,15 +250,14 @@ struct HomeScreen: View {
                                             }
                                             .buttonStyle(.plain)
 
-                                            Image(systemName: "minus.circle.fill")
-                                                .font(.system(size: 22))
+                                            TasqIcon("minus.circle.fill", size: 22)
                                                 .foregroundStyle(.red)
                                                 .background(Color.chartflowSurface)
                                                 .clipShape(Circle())
                                                 .offset(x: 8, y: -8)
                                         } else {
                                             NavigationLink {
-                                                ChartEditorView(chart: $charts[index])
+                                                ChartEditorView(chart: $charts[index], defaultZoom: defaultZoom)
                                                     .onAppear { }
                                             } label: {
                                                 RoutineCardView(chart: chart)
@@ -271,10 +271,9 @@ struct HomeScreen: View {
 
                                 if charts.count < 5 {
                                     Button {
-                                        charts.append(Chart.blank())
+                                        showScheduleTypeSheet = true
                                     } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 36))
+                                        TasqIcon("plus.circle.fill", size: 36)
                                             .foregroundStyle(Color.chartflowText)
                                     }
                                     .padding(.top, 8)
@@ -301,8 +300,7 @@ struct HomeScreen: View {
                                 .fill(isDeleteMode ? Color.red : Color.chartflowSurface)
                                 .frame(width: 56, height: 56)
                                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                            Image(systemName: isDeleteMode ? "xmark" : "trash")
-                                .font(.system(size: 22))
+                            TasqIcon(isDeleteMode ? "xmark" : "trash", size: 22)
                                 .foregroundStyle(isDeleteMode ? Color.white : Color.red)
                         }
                     }
@@ -318,6 +316,7 @@ struct HomeScreen: View {
                             withAnimation {
                                 charts.removeAll { $0.id == chart.id }
                             }
+                            progressStore.commitSave()
                         }
                         chartToDelete = nil
                         isDeleteMode = false
@@ -335,6 +334,19 @@ struct HomeScreen: View {
                 ) {
                     showOnboardingSheet = false
                 }
+            }
+            .confirmationDialog("New Schedule", isPresented: $showScheduleTypeSheet, titleVisibility: .visible) {
+                Button("Diagram") {
+                    charts.append(Chart.blank(type: .diagram))
+                    progressStore.commitSave()
+                }
+                Button("Dynamic") {
+                    charts.append(Chart.blank(type: .dynamic))
+                    progressStore.commitSave()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Choose the schedule type to create.")
             }
         }
     }
@@ -572,141 +584,153 @@ enum FriendAvatarItem: String, CaseIterable, Identifiable {
 
 struct FriendHubView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var multiplayerStore = FriendHubMultiplayerStore()
-    @AppStorage("friendAvatarX") private var avatarX = 0.5
-    @AppStorage("friendAvatarY") private var avatarY = 0.58
-    @AppStorage("friendAvatarBodyColor") private var bodyColorRaw = FriendAvatarBodyColor.skin7.rawValue
-    @AppStorage("friendAvatarMouth") private var mouthRaw = FriendAvatarMouth.none.rawValue
-    @AppStorage("friendAvatarEyes") private var eyesRaw = FriendAvatarEyes.none.rawValue
-    @AppStorage("friendAvatarHair") private var hairRaw = FriendAvatarHair.none.rawValue
-    @AppStorage("friendAvatarFur") private var furRaw = FriendAvatarFur.none.rawValue
-    @AppStorage("friendAvatarItem") private var itemRaw = FriendAvatarItem.none.rawValue
-    @AppStorage("friendAvatarHairHue") private var hairHue = 0.0
-    @AppStorage("friendAvatarHairSaturation") private var hairSaturation = 0.72
-    @AppStorage("friendAvatarHairBrightness") private var hairBrightness = 0.86
-    @AppStorage("friendAvatarScarfHue") private var scarfHue = 0.78
-    @State private var showCustomizer = false
-    @State private var isDragging = false
-
-    private var bodyColor: FriendAvatarBodyColor {
-        FriendAvatarBodyColor(rawValue: bodyColorRaw) ?? .skin7
-    }
-
-    private var mouth: FriendAvatarMouth {
-        FriendAvatarMouth(rawValue: mouthRaw) ?? .none
-    }
-
-    private var eyes: FriendAvatarEyes {
-        FriendAvatarEyes(rawValue: eyesRaw) ?? .none
-    }
-
-    private var hair: FriendAvatarHair {
-        FriendAvatarHair(rawValue: hairRaw) ?? .none
-    }
-
-    private var fur: FriendAvatarFur {
-        FriendAvatarFur(rawValue: furRaw) ?? .none
-    }
-
-    private var item: FriendAvatarItem {
-        FriendAvatarItem(rawValue: itemRaw) ?? .none
-    }
-
-    private var scarfColor: Color {
-        Color(hue: scarfHue, saturation: 0.68, brightness: 0.82)
-    }
-
-    private var hairColor: Color {
-        Color(hue: hairHue, saturation: hairSaturation, brightness: hairBrightness)
-    }
-
-    private var localAvatarConfig: FriendAvatarConfig {
-        FriendAvatarConfig(
-            bodyColorRaw: bodyColorRaw,
-            mouthRaw: mouthRaw,
-            eyesRaw: eyesRaw,
-            hairRaw: hairRaw,
-            furRaw: furRaw,
-            itemRaw: itemRaw,
-            hairHue: hairHue,
-            hairSaturation: hairSaturation,
-            hairBrightness: hairBrightness,
-            scarfHue: scarfHue
-        )
-    }
+    @EnvironmentObject private var authStore: AuthenticationStore
+    @StateObject private var searchStore = FriendHubSearchStore()
+    @State private var selectedTab = FriendHubTab.search
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                GeometryReader { proxy in
-                    let size = proxy.size
-                    let avatarSize = min(size.width * 0.32, 118)
-                    ZStack {
-                        ClubPenguinRoomBackground()
-
-                        TimelineView(.animation(minimumInterval: 0.2)) { timeline in
-                            ForEach(multiplayerStore.players) { player in
-                                let isLocalPlayer = player.id == multiplayerStore.localPlayerID
-                                FriendHubPlayerAvatar(
-                                    player: player,
-                                    avatarSize: avatarSize,
-                                    point: CGPoint(x: player.x * size.width, y: player.y * size.height),
-                                    animationTime: timeline.date.timeIntervalSinceReferenceDate,
-                                    isLocalPlayer: isLocalPlayer,
-                                    isDragging: isLocalPlayer && isDragging,
-                                    openCustomizer: {
-                                        showCustomizer = true
-                                    },
-                                    dragChanged: { point in
-                                        isDragging = true
-                                        updateAvatarPosition(point, in: size, isMoving: true)
-                                    },
-                                    dragEnded: { point in
-                                        updateAvatarPosition(point, in: size, isMoving: false)
-                                        isDragging = false
-                                    }
-                                )
+            Group {
+                if searchStore.isLoadingProfile {
+                    ProgressView()
+                        .tint(Color.chartflowText)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if searchStore.publicAccount == nil {
+                    FriendHubOnboardingView(
+                        username: $searchStore.usernameDraft,
+                        message: searchStore.onboardingMessage,
+                        isCreatingAccount: searchStore.isCreatingAccount,
+                        canCreateAccount: searchStore.canCreateAccount,
+                        createAccount: {
+                            Task {
+                                await searchStore.createPublicAccount(for: authStore.user?.uid)
+                                if searchStore.publicAccount != nil {
+                                    isSearchFocused = true
+                                }
                             }
                         }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(Color.chartflowText, lineWidth: 2)
                     )
-                }
-                .frame(minHeight: 420)
-                .padding(.horizontal, 18)
+                } else {
+                    VStack(spacing: 14) {
+                        Picker("Friend Hub tab", selection: $selectedTab) {
+                            Label {
+                                Text("Search")
+                            } icon: {
+                                TasqIcon("magnifyingglass", size: 14)
+                            }
+                                .tag(FriendHubTab.search)
+                            Label {
+                                Text("Friends")
+                            } icon: {
+                                TasqIcon("person.2.fill", size: 14)
+                            }
+                                .tag(FriendHubTab.friends)
+                            Label {
+                                Text("Notifs")
+                            } icon: {
+                                TasqIcon("bell.fill", size: 14)
+                            }
+                                .tag(FriendHubTab.notifications)
+                            Label {
+                                Text("Profile")
+                            } icon: {
+                                TasqIcon("person.crop.circle", size: 14)
+                            }
+                                .tag(FriendHubTab.profile)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 18)
 
-                VStack(spacing: 10) {
-                    Text("\(multiplayerStore.connectionStatus) • \(multiplayerStore.players.count) online")
-                        .font(.custom("ChartflowHand-Regular", size: 15))
-                        .foregroundStyle(Color.chartflowSecondaryText)
-
-                    Button {
-                        showCustomizer = true
-                    } label: {
-                        Label("Change Avatar", systemImage: "paintpalette.fill")
-                            .font(.custom("ChartflowHand-Regular", size: 18))
-                            .foregroundStyle(Color.chartflowBackground)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.chartflowText)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        if selectedTab == .search {
+                            FriendHubSearchContentView(
+                                query: $searchStore.query,
+                                accounts: searchStore.accounts,
+                                message: searchStore.searchMessage,
+                                isSearching: searchStore.isSearching,
+                                isSearchFocused: $isSearchFocused,
+                                clearSearch: {
+                                    searchStore.query = ""
+                                    searchStore.scheduleSearch(excluding: authStore.user?.uid)
+                                },
+                                openProfile: { account in
+                                    Task {
+                                        await searchStore.selectProfile(account, currentUserID: authStore.user?.uid)
+                                    }
+                                }
+                            )
+                        } else if selectedTab == .friends {
+                            FriendHubFriendsListView(
+                                friends: searchStore.friends,
+                                message: searchStore.friendsMessage,
+                                isLoading: searchStore.isLoadingSocialData,
+                                openProfile: { account in
+                                    Task {
+                                        await searchStore.selectProfile(account, currentUserID: authStore.user?.uid)
+                                    }
+                                },
+                                openChat: { friend in
+                                    searchStore.openChat(with: friend, currentUserID: authStore.user?.uid)
+                                }
+                            )
+                        } else if selectedTab == .notifications {
+                            FriendHubNotificationsView(
+                                requests: searchStore.incomingRequests,
+                                message: searchStore.notificationsMessage,
+                                isLoading: searchStore.isLoadingSocialData,
+                                acceptRequest: { request in
+                                    Task {
+                                        await searchStore.acceptFriendRequest(request, currentUserID: authStore.user?.uid)
+                                    }
+                                },
+                                declineRequest: { request in
+                                    Task {
+                                        await searchStore.declineFriendRequest(request, currentUserID: authStore.user?.uid)
+                                    }
+                                },
+                                openProfile: { account in
+                                    Task {
+                                        await searchStore.selectProfile(account, currentUserID: authStore.user?.uid)
+                                    }
+                                }
+                            )
+                        } else {
+                            FriendHubProfileSettingsView(
+                                username: $searchStore.profileUsernameDraft,
+                                displayName: $searchStore.displayNameDraft,
+                                profileIconName: $searchStore.profileIconNameDraft,
+                                profileColorRaw: $searchStore.profileColorRawDraft,
+                                bio: $searchStore.bioDraft,
+                                status: $searchStore.statusDraft,
+                                message: searchStore.profileMessage,
+                                isSaving: searchStore.isSavingProfile,
+                                canSave: searchStore.canSaveProfile,
+                                saveProfile: {
+                                    Task {
+                                        await searchStore.saveProfileSettings(for: authStore.user?.uid)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 10)
             }
+            .padding(.top, 18)
             .background(PolkaDotBackground().ignoresSafeArea())
             .task {
-                multiplayerStore.join(name: "You", avatar: localAvatarConfig, x: avatarX, y: avatarY)
+                await searchStore.loadPublicAccount(for: authStore.user?.uid)
+                isSearchFocused = searchStore.publicAccount != nil
             }
-            .onDisappear {
-                multiplayerStore.leave()
+            .onChange(of: selectedTab) { _, newTab in
+                isSearchFocused = newTab == .search
+                if newTab == .friends || newTab == .notifications {
+                    Task {
+                        await searchStore.loadSocialData(for: authStore.user?.uid)
+                    }
+                }
             }
-            .onChange(of: localAvatarConfig) { _, newConfig in
-                multiplayerStore.updateLocalAvatar(newConfig)
+            .onChange(of: searchStore.query) { _, _ in
+                searchStore.scheduleSearch(excluding: authStore.user?.uid)
             }
             .navigationTitle("Friend Hub")
             .navigationBarTitleDisplayMode(.inline)
@@ -717,31 +741,1158 @@ struct FriendHubView: View {
                     }
                 }
             }
-            .fullScreenCover(isPresented: $showCustomizer) {
-                FriendAvatarCustomizerView(
-                    bodyColorRaw: $bodyColorRaw,
-                    mouthRaw: $mouthRaw,
-                    eyesRaw: $eyesRaw,
-                    hairRaw: $hairRaw,
-                    furRaw: $furRaw,
-                    itemRaw: $itemRaw,
-                    hairHue: $hairHue,
-                    hairSaturation: $hairSaturation,
-                    hairBrightness: $hairBrightness,
-                    scarfHue: $scarfHue
+            .sheet(item: $searchStore.selectedProfile) { account in
+                FriendHubPublicProfileView(
+                    account: account,
+                    friends: searchStore.selectedProfileFriends,
+                    message: searchStore.selectedProfileMessage,
+                    isSendingFriendRequest: searchStore.isSendingFriendRequest,
+                    isAlreadyFriend: searchStore.publicAccount?.friendIDs.contains(account.id) == true,
+                    isCurrentUser: searchStore.publicAccount?.id == account.id,
+                    sendFriendRequest: {
+                        Task {
+                            await searchStore.sendFriendRequest(to: account, from: authStore.user?.uid)
+                        }
+                    },
+                    openChat: {
+                        searchStore.openChat(with: account, currentUserID: authStore.user?.uid)
+                    },
+                    openFriendProfile: { friend in
+                        Task {
+                            await searchStore.selectProfile(friend, currentUserID: authStore.user?.uid)
+                        }
+                    }
+                )
+            }
+            .sheet(item: $searchStore.selectedChatFriend, onDismiss: {
+                searchStore.closeChat()
+            }) { friend in
+                FriendHubChatView(
+                    friend: friend,
+                    messages: searchStore.chatMessages,
+                    currentUserID: authStore.user?.uid ?? "",
+                    safetyAccepted: searchStore.chatSafetyAccepted,
+                    chatBlocked: searchStore.chatBlocked,
+                    isLoading: searchStore.isLoadingChat,
+                    isSending: searchStore.isSendingMessage,
+                    isSendingPicture: searchStore.isSendingPicture,
+                    message: searchStore.chatMessage,
+                    acceptSafety: {
+                        searchStore.acceptChatSafety(for: friend.id)
+                    },
+                    sendMessage: { text in
+                        await searchStore.sendChatMessage(text, currentUserID: authStore.user?.uid)
+                    },
+                    sendPicture: { imageData in
+                        await searchStore.sendChatPicture(imageData, currentUserID: authStore.user?.uid)
+                    },
+                    reportPicture: { message in
+                        Task {
+                            await searchStore.reportInappropriatePicture(message, currentUserID: authStore.user?.uid)
+                        }
+                    }
                 )
             }
         }
     }
+}
 
-    private func updateAvatarPosition(_ point: CGPoint, in size: CGSize, isMoving: Bool) {
-        let horizontalPadding = 48.0
-        let verticalPadding = 70.0
-        let x = min(max(point.x, horizontalPadding), max(horizontalPadding, size.width - horizontalPadding))
-        let y = min(max(point.y, verticalPadding), max(verticalPadding, size.height - verticalPadding))
-        avatarX = x / max(size.width, 1)
-        avatarY = y / max(size.height, 1)
-        multiplayerStore.updateLocalPosition(x: avatarX, y: avatarY, isMoving: isMoving)
+private enum FriendHubTab {
+    case search
+    case friends
+    case notifications
+    case profile
+}
+
+private struct FriendHubOnboardingView: View {
+    @Binding var username: String
+    let message: String
+    let isCreatingAccount: Bool
+    let canCreateAccount: Bool
+    let createAccount: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 20)
+
+            VStack(spacing: 12) {
+                TasqIcon("person.crop.circle.badge.plus", size: 48)
+                    .foregroundStyle(Color.chartflowText)
+
+                Text("Create your public username")
+                    .font(.custom("ChartflowHand-Regular", size: 30))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowText)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.75)
+
+                Text("This is the name friends will search for in Friend Hub.")
+                    .font(.custom("ChartflowHand-Regular", size: 18))
+                    .foregroundStyle(Color.chartflowSecondaryText)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Text("@")
+                        .font(.custom("ChartflowHand-Regular", size: 24))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowSecondaryText)
+
+                    TextField("username", text: $username)
+                        .font(.custom("ChartflowHand-Regular", size: 24))
+                        .foregroundStyle(Color.chartflowText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onChange(of: username) { _, newValue in
+                            username = newValue.friendHubUsernameInputFiltered
+                        }
+                }
+                .padding(.horizontal, 16)
+                .frame(minHeight: 58)
+                .background(Color.chartflowBackground.opacity(0.8))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
+                }
+
+                Button {
+                    createAccount()
+                } label: {
+                    HStack(spacing: 10) {
+                        if isCreatingAccount {
+                            ProgressView()
+                                .tint(Color.chartflowBackground)
+                        } else {
+                            TasqIcon("checkmark.circle.fill", size: 22)
+                        }
+
+                        Text("Create Username")
+                    }
+                    .font(.custom("ChartflowHand-Regular", size: 22))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowBackground)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(canCreateAccount ? Color.chartflowText : Color.chartflowText.opacity(0.35))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .disabled(!canCreateAccount)
+
+                Text(message)
+                    .font(.custom("ChartflowHand-Regular", size: 17))
+                    .foregroundStyle(message.contains("taken") || message.contains("Use only") ? .red : Color.chartflowSecondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(minHeight: 42)
+            }
+            .padding(20)
+            .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+
+            Spacer(minLength: 20)
+        }
+        .padding(.horizontal, 22)
+    }
+}
+
+private struct FriendHubSearchContentView: View {
+    @Binding var query: String
+    let accounts: [FriendHubAccount]
+    let message: String
+    let isSearching: Bool
+    var isSearchFocused: FocusState<Bool>.Binding
+    let clearSearch: () -> Void
+    let openProfile: (FriendHubAccount) -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                TasqIcon("magnifyingglass", size: 18)
+                    .foregroundStyle(Color.chartflowSecondaryText)
+
+                TextField("Search usernames", text: $query)
+                    .font(.custom("ChartflowHand-Regular", size: 22))
+                    .foregroundStyle(Color.chartflowText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused(isSearchFocused)
+                    .submitLabel(.search)
+
+                if isSearching {
+                    ProgressView()
+                        .tint(Color.chartflowText)
+                } else if !query.isEmpty {
+                    Button(action: clearSearch) {
+                        TasqIcon("xmark.circle.fill", size: 18)
+                            .foregroundStyle(Color.chartflowSecondaryText)
+                    }
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 58)
+            .background(Color.chartflowSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.chartflowText, lineWidth: 2)
+            }
+            .padding(.horizontal, 18)
+
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    if !message.isEmpty {
+                        Text(message)
+                            .font(.custom("ChartflowHand-Regular", size: 19))
+                            .foregroundStyle(Color.chartflowSecondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 34)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    ForEach(accounts) { account in
+                        Button {
+                            openProfile(account)
+                        } label: {
+                            FriendHubAccountRow(account: account)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
+            }
+        }
+    }
+}
+
+private struct FriendHubFriendsListView: View {
+    let friends: [FriendHubAccount]
+    let message: String
+    let isLoading: Bool
+    let openProfile: (FriendHubAccount) -> Void
+    let openChat: (FriendHubAccount) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                if isLoading {
+                    ProgressView()
+                        .tint(Color.chartflowText)
+                        .padding(.top, 34)
+                } else if !message.isEmpty {
+                    Text(message)
+                        .font(.custom("ChartflowHand-Regular", size: 19))
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 34)
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(friends) { friend in
+                    HStack(spacing: 10) {
+                        Button {
+                            openProfile(friend)
+                        } label: {
+                            FriendHubAccountRow(account: friend)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            openChat(friend)
+                        } label: {
+                            TasqIcon("message.fill", size: 20)
+                                .foregroundStyle(Color.chartflowBackground)
+                                .frame(width: 48, height: 48)
+                                .background(Color.chartflowText)
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel("Chat with \(friend.username)")
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 18)
+        }
+    }
+}
+
+private struct FriendHubChatFriendRow: View {
+    let friend: FriendHubAccount
+    let openProfile: (FriendHubAccount) -> Void
+    let openChat: (FriendHubAccount) -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                openProfile(friend)
+            } label: {
+                FriendHubAccountRow(account: friend)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                openChat(friend)
+            } label: {
+                TasqIcon("message.fill", size: 20)
+                    .foregroundStyle(Color.chartflowBackground)
+                    .frame(width: 48, height: 48)
+                    .background(Color.chartflowText)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Chat with \(friend.username)")
+        }
+    }
+}
+
+private struct FriendHubNotificationsView: View {
+    let requests: [FriendHubFriendRequest]
+    let message: String
+    let isLoading: Bool
+    let acceptRequest: (FriendHubFriendRequest) -> Void
+    let declineRequest: (FriendHubFriendRequest) -> Void
+    let openProfile: (FriendHubAccount) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                if isLoading {
+                    ProgressView()
+                        .tint(Color.chartflowText)
+                        .padding(.top, 34)
+                } else if !message.isEmpty {
+                    Text(message)
+                        .font(.custom("ChartflowHand-Regular", size: 19))
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 34)
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(requests) { request in
+                    FriendHubRequestRow(
+                        request: request,
+                        acceptRequest: acceptRequest,
+                        declineRequest: declineRequest,
+                        openProfile: openProfile
+                    )
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 18)
+        }
+    }
+}
+
+private struct FriendHubProfileSettingsView: View {
+    @Binding var username: String
+    @Binding var displayName: String
+    @Binding var profileIconName: String
+    @Binding var profileColorRaw: String
+    @Binding var bio: String
+    @Binding var status: String
+    let message: String
+    let isSaving: Bool
+    let canSave: Bool
+    let saveProfile: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                FriendHubProfilePreview(
+                    account: FriendHubAccount(
+                        id: "preview",
+                        username: username.friendHubUsernameInputFiltered,
+                        displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                        profileIconName: profileIconName,
+                        profileColorRaw: profileColorRaw,
+                        bio: bio,
+                        status: status,
+                        friendIDs: []
+                    )
+                )
+
+                VStack(spacing: 12) {
+                    FriendHubProfileFieldLabel("Username")
+                    FriendHubTextInput(prefix: "@", placeholder: "username", text: $username)
+                        .onChange(of: username) { _, newValue in
+                            username = newValue.friendHubUsernameInputFiltered
+                        }
+
+                    FriendHubProfileFieldLabel("Display name")
+                    FriendHubTextInput(prefix: nil, placeholder: "Display name", text: $displayName)
+                        .onChange(of: displayName) { _, newValue in
+                            displayName = String(newValue.prefix(32))
+                        }
+
+                    FriendHubProfileFieldLabel("Profile picture")
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+                        ForEach(FriendHubProfileStyle.icons, id: \.self) { iconName in
+                            Button {
+                                profileIconName = iconName
+                            } label: {
+                                TasqIcon(iconName, size: 23)
+                                    .foregroundStyle(profileIconName == iconName ? Color.chartflowBackground : Color.chartflowText)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 48)
+                                    .background(profileIconName == iconName ? Color.chartflowText : Color.chartflowBackground.opacity(0.7))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    FriendHubProfileFieldLabel("Color")
+                    HStack(spacing: 10) {
+                        ForEach(FriendHubProfileStyle.colorNames, id: \.self) { colorRaw in
+                            Button {
+                                profileColorRaw = colorRaw
+                            } label: {
+                                Circle()
+                                    .fill(FriendHubProfileStyle.color(for: colorRaw))
+                                    .frame(width: 34, height: 34)
+                                    .overlay {
+                                        Circle()
+                                            .stroke(Color.chartflowText, lineWidth: profileColorRaw == colorRaw ? 3 : 1)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    FriendHubProfileFieldLabel("Status")
+                    FriendHubTextInput(prefix: nil, placeholder: "Working on chores", text: $status)
+                        .onChange(of: status) { _, newValue in
+                            status = String(newValue.prefix(40))
+                        }
+
+                    FriendHubProfileFieldLabel("Bio")
+                    TextField("Bio", text: $bio, axis: .vertical)
+                        .font(.custom("ChartflowHand-Regular", size: 20))
+                        .foregroundStyle(Color.chartflowText)
+                        .lineLimit(2...3)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.chartflowBackground.opacity(0.8))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
+                        }
+                        .onChange(of: bio) { _, newValue in
+                            bio = String(newValue.prefix(90))
+                        }
+
+                    Button(action: saveProfile) {
+                        HStack(spacing: 10) {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(Color.chartflowBackground)
+                            } else {
+                                TasqIcon("checkmark.circle.fill", size: 22)
+                            }
+
+                            Text("Save Profile")
+                        }
+                        .font(.custom("ChartflowHand-Regular", size: 22))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowBackground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(canSave ? Color.chartflowText : Color.chartflowText.opacity(0.35))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .disabled(!canSave)
+
+                    Text(message)
+                        .font(.custom("ChartflowHand-Regular", size: 17))
+                        .foregroundStyle(message.contains("saved") ? .green : Color.chartflowSecondaryText)
+                        .multilineTextAlignment(.center)
+                        .frame(minHeight: 34)
+                }
+                .padding(18)
+                .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 18)
+        }
+    }
+}
+
+private struct FriendHubAccountRow: View {
+    let account: FriendHubAccount
+
+    var body: some View {
+        HStack(spacing: 12) {
+            FriendHubProfilePicture(account: account, size: 46)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(account.displayName.isEmpty ? "@\(account.username)" : account.displayName)
+                    .font(.custom("ChartflowHand-Regular", size: 22))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text("@\(account.username)")
+                    .font(.custom("ChartflowHand-Regular", size: 16))
+                    .foregroundStyle(Color.chartflowSecondaryText)
+                    .lineLimit(1)
+
+                if !account.status.isEmpty {
+                    Text(account.status)
+                        .font(.custom("ChartflowHand-Regular", size: 15))
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .chartflowBox(cornerRadius: 16, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
+    }
+}
+
+private struct FriendHubRequestRow: View {
+    let request: FriendHubFriendRequest
+    let acceptRequest: (FriendHubFriendRequest) -> Void
+    let declineRequest: (FriendHubFriendRequest) -> Void
+    let openProfile: (FriendHubAccount) -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Button {
+                openProfile(request.sender)
+            } label: {
+                FriendHubAccountRow(account: request.sender)
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 10) {
+                Button {
+                    acceptRequest(request)
+                } label: {
+                    Label {
+                        Text("Accept")
+                    } icon: {
+                        TasqIcon("checkmark.circle.fill", size: 18)
+                    }
+                        .font(.custom("ChartflowHand-Regular", size: 18))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowBackground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.chartflowText)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+
+                Button {
+                    declineRequest(request)
+                } label: {
+                    Label {
+                        Text("Decline")
+                    } icon: {
+                        TasqIcon("xmark.circle.fill", size: 18)
+                    }
+                        .font(.custom("ChartflowHand-Regular", size: 18))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.chartflowSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.chartflowText, lineWidth: 1.5)
+                        }
+                }
+            }
+        }
+        .padding(12)
+        .chartflowBox(cornerRadius: 18, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
+    }
+}
+
+private struct FriendHubPublicProfileView: View {
+    @Environment(\.dismiss) private var dismiss
+    let account: FriendHubAccount
+    let friends: [FriendHubAccount]
+    let message: String
+    let isSendingFriendRequest: Bool
+    let isAlreadyFriend: Bool
+    let isCurrentUser: Bool
+    let sendFriendRequest: () -> Void
+    let openChat: () -> Void
+    let openFriendProfile: (FriendHubAccount) -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 14) {
+                    FriendHubProfilePreview(account: account)
+
+                    if isAlreadyFriend {
+                        Button(action: openChat) {
+                            HStack(spacing: 10) {
+                                TasqIcon("message.fill", size: 21)
+                                Text("Chat")
+                            }
+                            .font(.custom("ChartflowHand-Regular", size: 21))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowBackground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(Color.chartflowText)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    } else if !isCurrentUser {
+                        Button(action: sendFriendRequest) {
+                            HStack(spacing: 10) {
+                                if isSendingFriendRequest {
+                                    ProgressView()
+                                        .tint(Color.chartflowBackground)
+                                } else {
+                                    TasqIcon("person.badge.plus.fill", size: 21)
+                                }
+
+                                Text("Send Friend Request")
+                            }
+                            .font(.custom("ChartflowHand-Regular", size: 21))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowBackground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(Color.chartflowText)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .disabled(isSendingFriendRequest)
+                    }
+
+                    if !message.isEmpty {
+                        Text(message)
+                            .font(.custom("ChartflowHand-Regular", size: 17))
+                            .foregroundStyle(message.contains("sent") ? .green : Color.chartflowSecondaryText)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Friends")
+                            .font(.custom("ChartflowHand-Regular", size: 23))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowText)
+
+                        if friends.isEmpty {
+                            Text("No friends yet.")
+                                .font(.custom("ChartflowHand-Regular", size: 18))
+                                .foregroundStyle(Color.chartflowSecondaryText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ForEach(friends) { friend in
+                                Button {
+                                    openFriendProfile(friend)
+                                } label: {
+                                    FriendHubAccountRow(account: friend)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .chartflowBox(cornerRadius: 18, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
+                }
+                .padding(18)
+            }
+            .background(PolkaDotBackground().ignoresSafeArea())
+            .navigationTitle("@\(account.username)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct FriendHubChatView: View {
+    @Environment(\.dismiss) private var dismiss
+    let friend: FriendHubAccount
+    let messages: [FriendHubChatMessage]
+    let currentUserID: String
+    let safetyAccepted: Bool
+    let chatBlocked: Bool
+    let isLoading: Bool
+    let isSending: Bool
+    let isSendingPicture: Bool
+    let message: String
+    let acceptSafety: () -> Void
+    let sendMessage: (String) async -> Bool
+    let sendPicture: (Data) async -> Bool
+    let reportPicture: (FriendHubChatMessage) -> Void
+    @State private var draft = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+
+    private var canSend: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending && safetyAccepted && !chatBlocked
+    }
+
+    private var canSendPicture: Bool {
+        safetyAccepted && !chatBlocked && !isSendingPicture
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if safetyAccepted {
+                    chatContent
+                } else {
+                    FriendHubChatSafetyView(
+                        friend: friend,
+                        acceptSafety: acceptSafety
+                    )
+                }
+            }
+            .background(PolkaDotBackground().ignoresSafeArea())
+            .navigationTitle("@\(friend.username)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var chatContent: some View {
+        VStack(spacing: 0) {
+            if isLoading {
+                ProgressView()
+                    .tint(Color.chartflowText)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(messages) { chatMessage in
+                                FriendHubChatBubble(
+                                    message: chatMessage,
+                                    isMine: chatMessage.senderID == currentUserID,
+                                    reportPicture: reportPicture
+                                )
+                                .id(chatMessage.id)
+                            }
+
+                            if messages.isEmpty {
+                                Text("No messages yet.")
+                                    .font(.custom("ChartflowHand-Regular", size: 19))
+                                    .foregroundStyle(Color.chartflowSecondaryText)
+                                    .padding(.top, 34)
+                            }
+                        }
+                        .padding(18)
+                    }
+                    .onChange(of: messages.count) { _, _ in
+                        if let lastMessage = messages.last {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !message.isEmpty {
+                Text(message)
+                    .font(.custom("ChartflowHand-Regular", size: 16))
+                    .foregroundStyle(message.contains("blocked") ? .red : Color.chartflowSecondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 8)
+            }
+
+            HStack(spacing: 10) {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    if isSendingPicture {
+                        ProgressView()
+                            .tint(Color.chartflowText)
+                    } else {
+                        TasqIcon("photo.fill", size: 20)
+                    }
+                }
+                .frame(width: 46, height: 46)
+                .background(Color.chartflowSurface)
+                .foregroundStyle(canSendPicture ? Color.chartflowText : Color.chartflowText.opacity(0.35))
+                .clipShape(Circle())
+                .overlay {
+                    Circle()
+                        .stroke(Color.chartflowText.opacity(0.3), lineWidth: 1.5)
+                }
+                .disabled(!canSendPicture)
+                .accessibilityLabel("Send picture")
+
+                TextField("Message", text: $draft, axis: .vertical)
+                    .font(.custom("ChartflowHand-Regular", size: 20))
+                    .foregroundStyle(Color.chartflowText)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.chartflowSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
+                    }
+                    .onChange(of: draft) { _, newValue in
+                        draft = String(newValue.prefix(500))
+                    }
+                    .disabled(chatBlocked)
+
+                Button {
+                    Task {
+                        let sent = await sendMessage(draft)
+                        if sent {
+                            draft = ""
+                        }
+                    }
+                } label: {
+                    if isSending {
+                        ProgressView()
+                            .tint(Color.chartflowBackground)
+                    } else {
+                        TasqIcon("paperplane.fill", size: 19)
+                    }
+                }
+                .frame(width: 46, height: 46)
+                .background(canSend ? Color.chartflowText : Color.chartflowText.opacity(0.35))
+                .foregroundStyle(Color.chartflowBackground)
+                .clipShape(Circle())
+                .disabled(!canSend)
+                .accessibilityLabel("Send message")
+            }
+            .padding(14)
+            .background(Color.chartflowBackground.opacity(0.96))
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                guard let newItem else { return }
+
+                Task {
+                    guard let originalData = try? await newItem.loadTransferable(type: Data.self),
+                          let compressedData = FriendHubImageProcessor.compressedJPEGData(from: originalData) else {
+                        selectedPhotoItem = nil
+                        return
+                    }
+
+                    let sent = await sendPicture(compressedData)
+                    if sent {
+                        selectedPhotoItem = nil
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct FriendHubChatSafetyView: View {
+    let friend: FriendHubAccount
+    let acceptSafety: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                FriendHubProfilePreview(account: friend)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Before you chat")
+                        .font(.custom("ChartflowHand-Regular", size: 28))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowText)
+
+                    FriendHubSafetyReminder(icon: "creditcard.fill", text: "Never send money, gift cards, codes, passwords, or banking info.")
+                    FriendHubSafetyReminder(icon: "location.slash.fill", text: "Do not share your home address, school, phone number, email, or exact location.")
+                    FriendHubSafetyReminder(icon: "person.fill.xmark", text: "Do not agree to private meetups or keep scary requests secret.")
+                    FriendHubSafetyReminder(icon: "photo.fill", text: "Do not send private or inappropriate photos. Reported pictures block the chat.")
+                    FriendHubSafetyReminder(icon: "hand.raised.fill", text: "Stop chatting and tell a trusted adult if someone pressures, threatens, or tricks you.")
+
+                    Button(action: acceptSafety) {
+                        Label {
+                            Text("I Understand")
+                        } icon: {
+                            TasqIcon("checkmark.shield.fill", size: 20)
+                        }
+                            .font(.custom("ChartflowHand-Regular", size: 22))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowBackground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.chartflowText)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .padding(.top, 6)
+                }
+                .padding(18)
+                .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+            }
+            .padding(18)
+        }
+    }
+}
+
+private struct FriendHubSafetyReminder: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            TasqIcon(icon, size: 18)
+                .foregroundStyle(Color.chartflowText)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.custom("ChartflowHand-Regular", size: 18))
+                .foregroundStyle(Color.chartflowSecondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct FriendHubChatBubble: View {
+    let message: FriendHubChatMessage
+    let isMine: Bool
+    let reportPicture: (FriendHubChatMessage) -> Void
+
+    private var messageImage: UIImage? {
+        guard let imageDataBase64 = message.imageDataBase64,
+              let data = Data(base64Encoded: imageDataBase64) else {
+            return nil
+        }
+
+        return UIImage(data: data)
+    }
+
+    var body: some View {
+        HStack {
+            if isMine {
+                Spacer(minLength: 42)
+            }
+
+            VStack(alignment: isMine ? .trailing : .leading, spacing: 8) {
+                if let messageImage {
+                    Image(uiImage: messageImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 220, height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.chartflowText.opacity(0.24), lineWidth: 1.5)
+                        }
+                }
+
+                if !message.text.isEmpty {
+                    Text(message.text)
+                        .font(.custom("ChartflowHand-Regular", size: 19))
+                        .foregroundStyle(isMine ? Color.chartflowBackground : Color.chartflowText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if message.hasImage && !isMine {
+                    Button {
+                        reportPicture(message)
+                    } label: {
+                        Label {
+                            Text("Report image")
+                        } icon: {
+                            TasqIcon("hand.raised.fill", size: 14)
+                        }
+                        .font(.custom("ChartflowHand-Regular", size: 15))
+                        .fontWeight(.bold)
+                        .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(isMine ? Color.chartflowText : Color.chartflowSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.chartflowText.opacity(isMine ? 0 : 0.35), lineWidth: 1.5)
+            }
+
+            if !isMine {
+                Spacer(minLength: 42)
+            }
+        }
+    }
+}
+
+private enum FriendHubImageProcessor {
+    static func compressedJPEGData(from data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+
+        let maxDimension: CGFloat = 720
+        let largestDimension = max(image.size.width, image.size.height)
+        let scale = largestDimension > maxDimension ? maxDimension / largestDimension : 1
+        let targetSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let renderedImage = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+
+        return renderedImage.jpegData(compressionQuality: 0.62)
+    }
+}
+
+private struct FriendHubProfilePreview: View {
+    let account: FriendHubAccount
+
+    var body: some View {
+        HStack(spacing: 14) {
+            FriendHubProfilePicture(account: account, size: 62)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(account.displayName.isEmpty ? account.username : account.displayName)
+                    .font(.custom("ChartflowHand-Regular", size: 26))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text("@\(account.username.isEmpty ? "username" : account.username)")
+                    .font(.custom("ChartflowHand-Regular", size: 17))
+                    .foregroundStyle(Color.chartflowSecondaryText)
+                    .lineLimit(1)
+
+                if !account.bio.isEmpty {
+                    Text(account.bio)
+                        .font(.custom("ChartflowHand-Regular", size: 16))
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+    }
+}
+
+private struct FriendHubProfilePicture: View {
+    let account: FriendHubAccount
+    let size: CGFloat
+
+    var body: some View {
+        TasqIcon(account.profileIconName, size: size * 0.48)
+            .foregroundStyle(Color.chartflowBackground)
+            .frame(width: size, height: size)
+            .background(FriendHubProfileStyle.color(for: account.profileColorRaw))
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(Color.chartflowText, lineWidth: 1.5)
+            }
+    }
+}
+
+private struct FriendHubTextInput: View {
+    let prefix: String?
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let prefix {
+                Text(prefix)
+                    .font(.custom("ChartflowHand-Regular", size: 23))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowSecondaryText)
+            }
+
+            TextField(placeholder, text: $text)
+                .font(.custom("ChartflowHand-Regular", size: 21))
+                .foregroundStyle(Color.chartflowText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 54)
+        .background(Color.chartflowBackground.opacity(0.8))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
+        }
+    }
+}
+
+private struct FriendHubProfileFieldLabel: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.custom("ChartflowHand-Regular", size: 17))
+            .fontWeight(.bold)
+            .foregroundStyle(Color.chartflowSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private enum FriendHubProfileStyle {
+    static let icons = [
+        "person.crop.circle.fill",
+        "star.circle.fill",
+        "heart.circle.fill",
+        "bolt.circle.fill",
+        "leaf.circle.fill",
+        "moon.circle.fill",
+        "sparkles",
+        "checkmark.seal.fill"
+    ]
+
+    static let colorNames = ["blue", "green", "pink", "orange", "purple", "teal"]
+
+    static func color(for rawValue: String) -> Color {
+        switch rawValue {
+        case "green":
+            return .green
+        case "pink":
+            return .pink
+        case "orange":
+            return .orange
+        case "purple":
+            return .purple
+        case "teal":
+            return .teal
+        default:
+            return .blue
+        }
+    }
+}
+
+private extension String {
+    var friendHubUsernameInputFiltered: String {
+        let normalized = folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_")
+        let filteredScalars = normalized.unicodeScalars.filter { allowedCharacters.contains($0) }
+        return String(String.UnicodeScalarView(filteredScalars)).prefixString(maxLength: 20)
+    }
+
+    func prefixString(maxLength: Int) -> String {
+        String(prefix(maxLength))
     }
 }
 
@@ -916,7 +2067,11 @@ struct FriendAvatarCustomizerView: View {
                             Button {
                                 dismiss()
                             } label: {
-                                Label("Save", systemImage: "checkmark")
+                                Label {
+                                    Text("Save")
+                                } icon: {
+                                    TasqIcon("checkmark", size: 16)
+                                }
                                     .font(.custom("ChartflowHand-Regular", size: 16))
                                     .foregroundStyle(Color.white)
                                     .padding(.horizontal, 16)
@@ -1187,8 +2342,7 @@ struct FriendHairPreview: View {
                 .fill(Color.chartflowSecondaryText.opacity(0.12))
 
             if hair.imageNames.isEmpty {
-                Image(systemName: "nosign")
-                    .font(.system(size: 16))
+                TasqIcon("nosign", size: 16)
                     .foregroundStyle(Color.chartflowSecondaryText)
             } else {
                 FriendHairLayers(hair: hair, hairColor: hairColor)
@@ -1208,8 +2362,7 @@ struct FriendFurPreview: View {
                 .fill(Color.chartflowSecondaryText.opacity(0.12))
 
             if fur.imageNames.isEmpty {
-                Image(systemName: "nosign")
-                    .font(.system(size: 16))
+                TasqIcon("nosign", size: 16)
                     .foregroundStyle(Color.chartflowSecondaryText)
             } else {
                 FriendFurLayers(fur: fur)
@@ -1229,8 +2382,7 @@ struct FriendMouthPreview: View {
                 .fill(Color.chartflowSecondaryText.opacity(0.12))
 
             if mouth.imageNames.isEmpty {
-                Image(systemName: "nosign")
-                    .font(.system(size: 16))
+                TasqIcon("nosign", size: 16)
                     .foregroundStyle(Color.chartflowSecondaryText)
             } else {
                 ForEach(mouth.imageNames, id: \.self) { imageName in
@@ -1255,8 +2407,7 @@ struct FriendEyesPreview: View {
                 FriendAvatarLayer(imageName: imageName)
                     .padding(4)
             } else {
-                Image(systemName: "nosign")
-                    .font(.system(size: 16))
+                TasqIcon("nosign", size: 16)
                     .foregroundStyle(Color.chartflowSecondaryText)
             }
         }
@@ -1274,8 +2425,7 @@ struct FriendItemPreview: View {
                 .fill(Color.chartflowSecondaryText.opacity(0.12))
 
             if item.imageNames.isEmpty {
-                Image(systemName: "nosign")
-                    .font(.system(size: 16))
+                TasqIcon("nosign", size: 16)
                     .foregroundStyle(Color.chartflowSecondaryText)
             } else {
                 FriendItemLayers(item: item, scarfColor: scarfColor)
@@ -1433,7 +2583,7 @@ struct RoutineCardView: View {
                 .font(.custom("ChartflowHand-Regular", size: largerText ? 23 : 20))
                 .fontWeight(boldText ? .bold : .regular)
                 .foregroundStyle(Color.chartflowText)
-            Text("\(chart.events.count) step\(chart.events.count == 1 ? "" : "s")")
+            Text("\(chart.scheduleType.title) - \(chart.events.count) step\(chart.events.count == 1 ? "" : "s")")
                 .font(.custom("ChartflowHand-Regular", size: largerText ? 17 : 14))
                 .fontWeight(boldText ? .semibold : .regular)
                 .foregroundStyle(Color.chartflowSecondaryText)
@@ -1448,8 +2598,9 @@ struct RoutineCardView: View {
 struct SettingsView: View {
     @Binding var defaultZoom: Double
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authStore: AuthenticationStore
     @AppStorage("boxMovementEffect") private var boxMovementEffectRaw = BoxMovementEffect.doodle.rawValue
-    @AppStorage("backgroundPattern") private var backgroundPatternRaw = ChartflowBackgroundPattern.dots.rawValue
+    @AppStorage("backgroundPattern") private var backgroundPatternRaw = TasqBackgroundPattern.dots.rawValue
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @AppStorage("reduceBoxMotion") private var reduceBoxMotion = false
     @AppStorage("highContrastBoxes") private var highContrastBoxes = false
@@ -1465,9 +2616,9 @@ struct SettingsView: View {
         }
     }
 
-    private var backgroundPattern: Binding<ChartflowBackgroundPattern> {
+    private var backgroundPattern: Binding<TasqBackgroundPattern> {
         Binding {
-            ChartflowBackgroundPattern(rawValue: backgroundPatternRaw) ?? .dots
+            TasqBackgroundPattern(rawValue: backgroundPatternRaw) ?? .dots
         } set: { newValue in
             backgroundPatternRaw = newValue.rawValue
         }
@@ -1476,6 +2627,28 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Account") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(authStore.displayName)
+                            .font(.custom("ChartflowHand-Regular", size: 20))
+                        Text(authStore.email)
+                            .font(.custom("ChartflowHand-Regular", size: 15))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+
+                    Button(role: .destructive) {
+                        authStore.signOut()
+                        dismiss()
+                    } label: {
+                        Label {
+                            Text("Sign Out")
+                        } icon: {
+                            TasqIcon("rectangle.portrait.and.arrow.right", size: 17)
+                        }
+                    }
+                }
+
                 Section("Box Movement") {
                     Picker("Effect", selection: boxMovementEffect) {
                         ForEach(BoxMovementEffect.allCases) { effect in
@@ -1491,7 +2664,7 @@ struct SettingsView: View {
 
                 Section("Background") {
                     Picker("Pattern", selection: backgroundPattern) {
-                        ForEach(ChartflowBackgroundPattern.allCases) { pattern in
+                        ForEach(TasqBackgroundPattern.allCases) { pattern in
                             Text(pattern.title).tag(pattern)
                         }
                     }
@@ -1531,5 +2704,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    HomeScreen(charts: .constant([Chart.sample, Chart.blank()]))
+    HomeScreen(charts: .constant([Chart.sample, Chart.blank()]), defaultZoom: .constant(1.3))
 }

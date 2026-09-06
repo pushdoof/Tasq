@@ -1,13 +1,13 @@
 //
-//  ChartflowTests.swift
-//  ChartflowTests
+//  TasqTests.swift
+//  TasqTests
 //
 //  Created by Pushya Dutt on 6/12/26.
 //
 
 import Testing
 
-struct ChartflowTests {
+struct TasqTests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.

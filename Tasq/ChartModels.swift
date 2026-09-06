@@ -57,6 +57,7 @@ struct DynamicScheduleConfiguration: Codable, Equatable {
     var minimumTaskMinutes: Int
     var importanceBias: Double
     var includeStartTimesInTitles: Bool
+    var setupCompleted: Bool
 
     static let standard = DynamicScheduleConfiguration(
         dailyTasks: [
@@ -73,8 +74,64 @@ struct DynamicScheduleConfiguration: Codable, Equatable {
         endIsAM: true,
         minimumTaskMinutes: 5,
         importanceBias: 1.0,
-        includeStartTimesInTitles: true
+        includeStartTimesInTitles: true,
+        setupCompleted: false
     )
+
+    enum CodingKeys: String, CodingKey {
+        case dailyTasks
+        case startHour
+        case startMinute
+        case startIsAM
+        case endHour
+        case endMinute
+        case endIsAM
+        case minimumTaskMinutes
+        case importanceBias
+        case includeStartTimesInTitles
+        case setupCompleted
+    }
+
+    init(
+        dailyTasks: [DynamicScheduleTask],
+        startHour: Int,
+        startMinute: Int,
+        startIsAM: Bool,
+        endHour: Int,
+        endMinute: Int,
+        endIsAM: Bool,
+        minimumTaskMinutes: Int,
+        importanceBias: Double,
+        includeStartTimesInTitles: Bool,
+        setupCompleted: Bool = false
+    ) {
+        self.dailyTasks = dailyTasks
+        self.startHour = startHour
+        self.startMinute = startMinute
+        self.startIsAM = startIsAM
+        self.endHour = endHour
+        self.endMinute = endMinute
+        self.endIsAM = endIsAM
+        self.minimumTaskMinutes = minimumTaskMinutes
+        self.importanceBias = importanceBias
+        self.includeStartTimesInTitles = includeStartTimesInTitles
+        self.setupCompleted = setupCompleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dailyTasks = try container.decode([DynamicScheduleTask].self, forKey: .dailyTasks)
+        startHour = try container.decode(Int.self, forKey: .startHour)
+        startMinute = try container.decode(Int.self, forKey: .startMinute)
+        startIsAM = try container.decode(Bool.self, forKey: .startIsAM)
+        endHour = try container.decode(Int.self, forKey: .endHour)
+        endMinute = try container.decode(Int.self, forKey: .endMinute)
+        endIsAM = try container.decode(Bool.self, forKey: .endIsAM)
+        minimumTaskMinutes = try container.decodeIfPresent(Int.self, forKey: .minimumTaskMinutes) ?? 5
+        importanceBias = try container.decodeIfPresent(Double.self, forKey: .importanceBias) ?? 1.0
+        includeStartTimesInTitles = try container.decodeIfPresent(Bool.self, forKey: .includeStartTimesInTitles) ?? true
+        setupCompleted = try container.decodeIfPresent(Bool.self, forKey: .setupCompleted) ?? true
+    }
 }
 
 struct Chart: Identifiable, Codable, Equatable {
