@@ -7,82 +7,9 @@ internal import Combine
 struct MindflowHomeScreen: View {
     @Binding var charts: [Chart]
     @Binding var defaultZoom: Double
-    @State private var showSettingsSheet = false
-    @State private var showFriendHub = false
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                PolkaDotBackground()
-                    .ignoresSafeArea()
-
-                MindflowHomeDecorations()
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                    .zIndex(0)
-
-                MindflowStatusBarBacking()
-                    .allowsHitTesting(false)
-                    .zIndex(0.5)
-
-                VStack(spacing: 18) {
-                    Spacer(minLength: 32)
-
-                    Text("Tasq")
-                        .font(.custom("ChartflowHand-Regular", size: 48))
-                        .fontWeight(.black)
-                        .foregroundStyle(Color.chartflowText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 6)
-                        .background {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.chartflowSurface.opacity(0.94))
-                                .shadow(color: Color.chartflowBackground.opacity(0.9), radius: 8, x: 0, y: 0)
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.chartflowText.opacity(0.18), lineWidth: 1)
-                        }
-
-                    VStack(spacing: 14) {
-                        NavigationLink {
-                            HomeScreen(charts: $charts, defaultZoom: $defaultZoom)
-                        } label: {
-                            MindflowHomeButton(title: "Chartflow", systemImage: "list.bullet.rectangle.fill")
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            showFriendHub = true
-                        } label: {
-                            MindflowHomeButton(title: "Friend Hub", systemImage: "person.2.fill")
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            showSettingsSheet = true
-                        } label: {
-                            MindflowHomeButton(title: "Settings", systemImage: "gearshape.fill")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 24)
-                    .frame(maxWidth: 520)
-
-                    Spacer(minLength: 32)
-                }
-                .zIndex(1)
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $showSettingsSheet) {
-                SettingsView(defaultZoom: $defaultZoom)
-            }
-            .sheet(isPresented: $showFriendHub) {
-                FriendHubView()
-            }
-        }
+        TasqWorkspaceView(charts: $charts, defaultZoom: $defaultZoom)
     }
 }
 
@@ -160,25 +87,26 @@ struct MindflowHomeButton: View {
     let title: String
     let systemImage: String
     @AppStorage("boldText") private var boldText = false
+    @Environment(\.interfaceScale) private var interfaceScale
 
     var body: some View {
         HStack(spacing: 14) {
-            TasqIcon(systemImage, size: 24)
-                .frame(width: 40)
+            TasqIcon(systemImage, size: 24 * interfaceScale)
+                .frame(width: 40 * interfaceScale)
 
             Text(title)
-                .font(.custom("ChartflowHand-Regular", size: 28))
+                .font(.custom("ChartflowHand-Regular", size: 28 * interfaceScale))
                 .fontWeight(boldText ? .black : .bold)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Spacer(minLength: 0)
 
-            TasqIcon("chevron.right", size: 18)
+            TasqIcon("chevron.right", size: 18 * interfaceScale)
         }
         .foregroundStyle(Color.chartflowText)
-        .frame(maxWidth: .infinity, minHeight: 78)
-        .padding(.horizontal, 22)
+        .frame(maxWidth: .infinity, minHeight: 78 * interfaceScale)
+        .padding(.horizontal, 22 * interfaceScale)
         .chartflowBox(cornerRadius: 18, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
     }
 }
@@ -187,6 +115,7 @@ struct HomeScreen: View {
     @Binding var charts: [Chart]
     @Binding var defaultZoom: Double
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.interfaceScale) private var interfaceScale
     @EnvironmentObject private var progressStore: UserProgressStore
     @State private var isDeleteMode = false
     @State private var showDeleteConfirmation = false
@@ -204,34 +133,45 @@ struct HomeScreen: View {
                     PolkaDotBackground()
                         .ignoresSafeArea()
 
+                    if showScheduleTypeSheet {
+                        Color.black.opacity(0.25)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showScheduleTypeSheet = false
+                                }
+                            }
+                            .zIndex(2)
+                    }
+
                     VStack(spacing: 0) {
                         HStack {
                             Button {
                                 dismiss()
                             } label: {
-                                TasqIcon("house.fill", size: 22)
+                                TasqIcon("house.fill", size: 22 * interfaceScale)
                                     .foregroundStyle(Color.chartflowText)
                             }
-                            .padding(.leading, 20)
+                            .padding(.leading, 20 * interfaceScale)
                             .accessibilityLabel("Back to Tasq")
 
                             Spacer(minLength: 0)
                             Text("Chartflow")
-                                .font(.custom("ChartflowHand-Regular", size: 36))
+                                .font(.custom("ChartflowHand-Regular", size: 36 * interfaceScale))
                                 .fontWeight(.bold)
                                 .foregroundStyle(Color.chartflowText)
                             Spacer(minLength: 0)
                             Button {
                                 showOnboardingSheet = true
                             } label: {
-                                TasqIcon("questionmark.circle", size: 22)
+                                TasqIcon("questionmark.circle", size: 22 * interfaceScale)
                                     .foregroundStyle(Color.chartflowText)
                             }
-                            .padding(.trailing, 20)
+                            .padding(.trailing, 20 * interfaceScale)
                             .accessibilityLabel("Help")
                         }
-                        .padding(.top, 20)
-                        .padding(.bottom, 16)
+                        .padding(.top, 20 * interfaceScale)
+                        .padding(.bottom, 16 * interfaceScale)
 
                         ScrollView {
                             VStack(spacing: cardSpacing) {
@@ -306,6 +246,34 @@ struct HomeScreen: View {
                     }
                     .padding(.trailing, 24)
                     .padding(.bottom, 40)
+
+                    if showScheduleTypeSheet {
+                        NewScheduleDoodlyDialog(
+                            createDiagram: {
+                                charts.append(Chart.blank(type: .diagram))
+                                progressStore.commitSave()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showScheduleTypeSheet = false
+                                }
+                            },
+                            createDynamic: {
+                                charts.append(Chart.blank(type: .dynamic))
+                                progressStore.commitSave()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showScheduleTypeSheet = false
+                                }
+                            },
+                            cancel: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showScheduleTypeSheet = false
+                                }
+                            }
+                        )
+                        .padding(.horizontal, 26)
+                        .padding(.bottom, 34)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(3)
+                    }
                 }
                 .alert("Delete Routine?", isPresented: $showDeleteConfirmation) {
                     Button("Cancel", role: .cancel) {
@@ -335,20 +303,61 @@ struct HomeScreen: View {
                     showOnboardingSheet = false
                 }
             }
-            .confirmationDialog("New Schedule", isPresented: $showScheduleTypeSheet, titleVisibility: .visible) {
-                Button("Diagram") {
-                    charts.append(Chart.blank(type: .diagram))
-                    progressStore.commitSave()
+        }
+    }
+}
+
+private struct NewScheduleDoodlyDialog: View {
+    let createDiagram: () -> Void
+    let createDynamic: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("New Schedule")
+                        .font(.custom("ChartflowHand-Regular", size: 28))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowText)
+                    Text("Choose the schedule type to create.")
+                        .font(.custom("ChartflowHand-Regular", size: 18))
+                        .foregroundStyle(Color.chartflowSecondaryText)
                 }
-                Button("Dynamic") {
-                    charts.append(Chart.blank(type: .dynamic))
-                    progressStore.commitSave()
+
+                Spacer(minLength: 0)
+
+                Button(action: cancel) {
+                    TasqIcon("xmark.circle.fill", size: 24)
+                        .foregroundStyle(Color.chartflowSecondaryText)
                 }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Choose the schedule type to create.")
+            }
+
+            VStack(spacing: 10) {
+                Button(action: createDiagram) {
+                    Text("Diagram")
+                        .font(.custom("ChartflowHand-Regular", size: 24))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowBackground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.chartflowText)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
+                Button(action: createDynamic) {
+                    Text("Dynamic")
+                        .font(.custom("ChartflowHand-Regular", size: 24))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.chartflowText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .chartflowBox(cornerRadius: 16, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+                }
             }
         }
+        .padding(20)
+        .chartflowBox(cornerRadius: 24, wobble: 2.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2.5)
     }
 }
 
@@ -365,11 +374,12 @@ enum FriendAvatarBodyColor: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String {
-        "Skin \(assetNumber)"
+        self == .skin7 ? "Original" : "Skin \(assetNumber)"
     }
 
     var imageName: String {
-        String(format: "FriendAsset%02d", assetNumber)
+        // Keep the saved default ID so existing avatars pick up the supplied artwork.
+        self == .skin7 ? "FriendCharacterSprite" : String(format: "FriendAsset%02d", assetNumber)
     }
 
     private var assetNumber: Int {
@@ -583,10 +593,11 @@ enum FriendAvatarItem: String, CaseIterable, Identifiable {
 }
 
 struct FriendHubView: View {
+    var embedded = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authStore: AuthenticationStore
     @StateObject private var searchStore = FriendHubSearchStore()
-    @State private var selectedTab = FriendHubTab.search
+    @State private var selectedTab = FriendHubTab.groups
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -613,36 +624,16 @@ struct FriendHubView: View {
                     )
                 } else {
                     VStack(spacing: 14) {
-                        Picker("Friend Hub tab", selection: $selectedTab) {
-                            Label {
-                                Text("Search")
-                            } icon: {
-                                TasqIcon("magnifyingglass", size: 14)
-                            }
-                                .tag(FriendHubTab.search)
-                            Label {
-                                Text("Friends")
-                            } icon: {
-                                TasqIcon("person.2.fill", size: 14)
-                            }
-                                .tag(FriendHubTab.friends)
-                            Label {
-                                Text("Notifs")
-                            } icon: {
-                                TasqIcon("bell.fill", size: 14)
-                            }
-                                .tag(FriendHubTab.notifications)
-                            Label {
-                                Text("Profile")
-                            } icon: {
-                                TasqIcon("person.crop.circle", size: 14)
-                            }
-                                .tag(FriendHubTab.profile)
+                        if selectedTab != .groups {
+                            DoodleSectionTitle(title: "Better with a little company", subtitle: "Your people, in your corner.")
+                                .padding(.horizontal, 22)
                         }
-                        .pickerStyle(.segmented)
+                        FriendHubDoodlyTabBar(selectedTab: $selectedTab)
                         .padding(.horizontal, 18)
 
-                        if selectedTab == .search {
+                        if selectedTab == .groups, let account = searchStore.publicAccount {
+                            FriendGroupHubView(account: account, friends: searchStore.friends)
+                        } else if selectedTab == .search {
                             FriendHubSearchContentView(
                                 query: $searchStore.query,
                                 accounts: searchStore.accounts,
@@ -717,9 +708,9 @@ struct FriendHubView: View {
             }
             .padding(.top, 18)
             .background(PolkaDotBackground().ignoresSafeArea())
-            .task {
+            .task(id: authStore.user?.uid) {
                 await searchStore.loadPublicAccount(for: authStore.user?.uid)
-                isSearchFocused = searchStore.publicAccount != nil
+                isSearchFocused = false
             }
             .onChange(of: selectedTab) { _, newTab in
                 isSearchFocused = newTab == .search
@@ -735,9 +726,9 @@ struct FriendHubView: View {
             .navigationTitle("Friend Hub")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                if !embedded {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
                     }
                 }
             }
@@ -797,11 +788,65 @@ struct FriendHubView: View {
     }
 }
 
-private enum FriendHubTab {
+private enum FriendHubTab: CaseIterable {
+    case groups
     case search
     case friends
     case notifications
     case profile
+
+    var title: String {
+        switch self {
+        case .groups: return "Hub"
+        case .search: return "Search"
+        case .friends: return "Friends"
+        case .notifications: return "Notifs"
+        case .profile: return "Profile"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .groups: return "sparkles"
+        case .search: return "magnifyingglass"
+        case .friends: return "person.2.fill"
+        case .notifications: return "bell.fill"
+        case .profile: return "person.crop.circle"
+        }
+    }
+}
+
+private struct FriendHubDoodlyTabBar: View {
+    @Binding var selectedTab: FriendHubTab
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(FriendHubTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        TasqIcon(tab.iconName, size: 15)
+                        Text(tab.title)
+                            .font(.custom("ChartflowHand-Regular", size: 16))
+                            .fontWeight(.bold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                    }
+                    .foregroundStyle(selectedTab == tab ? Color.chartflowBackground : Color.chartflowText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(selectedTab == tab ? Color.chartflowText : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+    }
 }
 
 private struct FriendHubOnboardingView: View {
@@ -896,7 +941,299 @@ private struct FriendHubOnboardingView: View {
     }
 }
 
+struct AccountSetupWizardView: View {
+    @Binding var birthday: Date
+    @Binding var appearanceMode: TasqAppearanceMode
+    @Binding var interfaceScale: Double
+    let finishSetup: () -> Void
+    @State private var currentStep = 0
+
+    private var latestBirthday: Date {
+        .now
+    }
+
+    private var isLastStep: Bool {
+        currentStep == 2
+    }
+
+    var body: some View {
+        ZStack {
+            PolkaDotBackground()
+                .ignoresSafeArea()
+
+            ScrollView {
+              VStack(spacing: 0) {
+                Spacer(minLength: 24)
+
+                ZStack {
+                    Circle()
+                        .fill(Color.chartflowSurface)
+                        .frame(width: 110 * interfaceScale, height: 110 * interfaceScale)
+                        .overlay {
+                            WobblyCircle(wobble: 2)
+                                .stroke(Color.chartflowText, lineWidth: 2.5)
+                        }
+                    TasqIcon(stepIcon, size: 46 * interfaceScale)
+                        .foregroundStyle(Color.chartflowText)
+                }
+                .padding(.bottom, 30 * interfaceScale)
+
+                Text(stepTitle)
+                    .font(.custom("ChartflowHand-Regular", size: 36 * interfaceScale))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28 * interfaceScale)
+
+                Text(stepSubtitle)
+                    .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
+                    .foregroundStyle(Color.chartflowText.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32 * interfaceScale)
+                    .padding(.top, 10 * interfaceScale)
+
+                stepContent
+                    .padding(22 * interfaceScale)
+                    .frame(maxWidth: 560)
+
+                Spacer(minLength: 16)
+
+                HStack(spacing: 8 * interfaceScale) {
+                    ForEach(0..<3, id: \.self) { step in
+                        Circle()
+                            .fill(step == currentStep ? Color.chartflowText : Color.chartflowSecondaryText.opacity(0.35))
+                            .frame(width: 10 * interfaceScale, height: 10 * interfaceScale)
+                            .animation(.easeInOut, value: currentStep)
+                    }
+                }
+                .padding(.bottom, 24 * interfaceScale)
+
+                HStack(spacing: 12 * interfaceScale) {
+                    if currentStep > 0 {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                currentStep -= 1
+                            }
+                        } label: {
+                            TasqIcon("chevron.left", size: 20 * interfaceScale)
+                                .foregroundStyle(Color.chartflowText)
+                                .frame(width: 52 * interfaceScale, height: 56 * interfaceScale)
+                                .background(Color.chartflowSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                    }
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            if isLastStep {
+                                finishSetup()
+                            } else {
+                                currentStep += 1
+                            }
+                        }
+                    } label: {
+                        Text(isLastStep ? "Finish Setup" : "Next")
+                            .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowBackground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18 * interfaceScale)
+                            .background(Color.chartflowText)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                }
+                .padding(.horizontal, 28 * interfaceScale)
+
+                Spacer().frame(height: 44 * interfaceScale)
+              }
+              .frame(maxWidth: 680)
+              .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch currentStep {
+        case 0:
+            DatePicker(
+                "Birth date",
+                selection: $birthday,
+                in: ...latestBirthday,
+                displayedComponents: .date
+            )
+            .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
+            .datePickerStyle(.graphical)
+            .padding(18 * interfaceScale)
+            .chartflowBox(cornerRadius: 18, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+        case 1:
+            HStack(spacing: 12 * interfaceScale) {
+                ForEach(TasqAppearanceMode.allCases) { mode in
+                    AccountAppearanceChoice(
+                        mode: mode,
+                        isSelected: appearanceMode == mode
+                    ) {
+                        appearanceMode = mode
+                    }
+                }
+            }
+            .padding(18 * interfaceScale)
+            .chartflowBox(cornerRadius: 18, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+        default:
+            VStack(spacing: 16 * interfaceScale) {
+                AccountSizingPreview(scale: interfaceScale)
+
+                HStack {
+                    Text("Small")
+                    Slider(value: $interfaceScale, in: 0.8...1.35, step: 0.05)
+                        .tint(Color.chartflowText)
+                    Text("Large")
+                }
+                .font(.custom("ChartflowHand-Regular", size: 16 * interfaceScale))
+                .foregroundStyle(Color.chartflowSecondaryText)
+
+                Text("\(Int(interfaceScale * 100))%")
+                    .font(.custom("ChartflowHand-Regular", size: 20 * interfaceScale))
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.chartflowText)
+            }
+            .padding(18 * interfaceScale)
+            .chartflowBox(cornerRadius: 18, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+        }
+    }
+
+    private var stepTitle: String {
+        switch currentStep {
+        case 0: return "Your birthday"
+        case 1: return "Choose appearance"
+        default: return "Choose sizing"
+        }
+    }
+
+    private var stepSubtitle: String {
+        switch currentStep {
+        case 0: return "This belongs to your Tasq account."
+        case 1: return "Pick how the app should look."
+        default: return "Change button and font size."
+        }
+    }
+
+    private var stepIcon: String {
+        switch currentStep {
+        case 0: return "calendar"
+        case 1: return "circle.lefthalf.filled"
+        default: return "textformat.size"
+        }
+    }
+}
+
+private struct AccountSizingPreview: View {
+    let scale: Double
+
+    var body: some View {
+        VStack(spacing: 12 * scale) {
+            Text("Preview")
+                .font(.custom("ChartflowHand-Regular", size: 20 * scale))
+                .fontWeight(.bold)
+                .foregroundStyle(Color.chartflowText)
+
+            HStack(spacing: 10 * scale) {
+                TasqIcon("list.bullet.rectangle.fill", size: 22 * scale)
+                    .frame(width: 34 * scale)
+
+                VStack(alignment: .leading, spacing: 3 * scale) {
+                    Text("Chartflow")
+                        .font(.custom("ChartflowHand-Regular", size: 24 * scale))
+                        .fontWeight(.bold)
+                    Text("Buttons and labels resize")
+                        .font(.custom("ChartflowHand-Regular", size: 15 * scale))
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                }
+
+                Spacer(minLength: 0)
+
+                TasqIcon("chevron.right", size: 16 * scale)
+            }
+            .foregroundStyle(Color.chartflowText)
+            .frame(height: 64 * scale)
+            .padding(.horizontal, 16 * scale)
+            .chartflowBox(cornerRadius: 16, wobble: 2, fillColor: .chartflowBackground, strokeColor: .chartflowText, lineWidth: 2)
+        }
+        .animation(.easeInOut(duration: 0.15), value: scale)
+    }
+}
+
+private struct AccountAppearanceChoice: View {
+    @Environment(\.interfaceScale) private var interfaceScale
+    let mode: TasqAppearanceMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var previewBackground: Color {
+        switch mode {
+        case .system: return Color(red: 0.64, green: 0.78, blue: 0.92)
+        case .light: return Color(red: 0.92, green: 0.97, blue: 1.0)
+        case .dark: return Color(red: 0.04, green: 0.06, blue: 0.12)
+        }
+    }
+
+    private var previewForeground: Color {
+        mode == .dark ? .white : .black
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8 * interfaceScale) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(previewBackground)
+
+                    VStack(spacing: 5 * interfaceScale) {
+                        HStack(spacing: 3 * interfaceScale) {
+                            TasqIcon(mode.iconName, size: 8 * interfaceScale)
+                                .foregroundStyle(previewForeground.opacity(0.82))
+                            Spacer()
+                        }
+
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(Color.blue)
+                            .frame(height: 10 * interfaceScale)
+
+                        Spacer(minLength: 0)
+
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(mode == .dark ? Color.black.opacity(0.75) : Color.white.opacity(0.92))
+                            .frame(height: 25 * interfaceScale)
+                            .overlay {
+                                HStack(spacing: 5 * interfaceScale) {
+                                    Circle().fill(.red).frame(width: 6 * interfaceScale, height: 6 * interfaceScale)
+                                    Circle().fill(.yellow).frame(width: 6 * interfaceScale, height: 6 * interfaceScale)
+                                    Circle().fill(.green).frame(width: 6 * interfaceScale, height: 6 * interfaceScale)
+                                }
+                            }
+                    }
+                    .padding(7 * interfaceScale)
+                }
+                .frame(height: 62 * interfaceScale)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(isSelected ? Color.blue : Color.chartflowText.opacity(0.25), lineWidth: isSelected ? 3 : 1)
+                }
+
+                Text(mode.title)
+                    .font(.custom("ChartflowHand-Regular", size: 17 * interfaceScale))
+                    .fontWeight(.bold)
+                    .foregroundStyle(isSelected ? Color.chartflowText : Color.chartflowSecondaryText)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private struct FriendHubSearchContentView: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     @Binding var query: String
     let accounts: [FriendHubAccount]
     let message: String
@@ -906,13 +1243,13 @@ private struct FriendHubSearchContentView: View {
     let openProfile: (FriendHubAccount) -> Void
 
     var body: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
-                TasqIcon("magnifyingglass", size: 18)
+        VStack(spacing: 14 * interfaceScale) {
+            HStack(spacing: 12 * interfaceScale) {
+                TasqIcon("magnifyingglass", size: 18 * interfaceScale)
                     .foregroundStyle(Color.chartflowSecondaryText)
 
                 TextField("Search usernames", text: $query)
-                    .font(.custom("ChartflowHand-Regular", size: 22))
+                    .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
                     .foregroundStyle(Color.chartflowText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -924,30 +1261,30 @@ private struct FriendHubSearchContentView: View {
                         .tint(Color.chartflowText)
                 } else if !query.isEmpty {
                     Button(action: clearSearch) {
-                        TasqIcon("xmark.circle.fill", size: 18)
+                        TasqIcon("xmark.circle.fill", size: 18 * interfaceScale)
                             .foregroundStyle(Color.chartflowSecondaryText)
                     }
                     .accessibilityLabel("Clear search")
                 }
             }
-            .padding(.horizontal, 16)
-            .frame(minHeight: 58)
+            .padding(.horizontal, 16 * interfaceScale)
+            .frame(minHeight: 58 * interfaceScale)
             .background(Color.chartflowSurface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(Color.chartflowText, lineWidth: 2)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 18 * interfaceScale)
 
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 10 * interfaceScale) {
                     if !message.isEmpty {
                         Text(message)
-                            .font(.custom("ChartflowHand-Regular", size: 19))
+                            .font(.custom("ChartflowHand-Regular", size: 19 * interfaceScale))
                             .foregroundStyle(Color.chartflowSecondaryText)
                             .multilineTextAlignment(.center)
-                            .padding(.top, 34)
+                            .padding(.top, 34 * interfaceScale)
                             .frame(maxWidth: .infinity)
                     }
 
@@ -960,14 +1297,15 @@ private struct FriendHubSearchContentView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 18)
+                .padding(.horizontal, 18 * interfaceScale)
+                .padding(.bottom, 18 * interfaceScale)
             }
         }
     }
 }
 
 private struct FriendHubFriendsListView: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let friends: [FriendHubAccount]
     let message: String
     let isLoading: Bool
@@ -976,22 +1314,22 @@ private struct FriendHubFriendsListView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
+            LazyVStack(spacing: 10 * interfaceScale) {
                 if isLoading {
                     ProgressView()
                         .tint(Color.chartflowText)
-                        .padding(.top, 34)
+                        .padding(.top, 34 * interfaceScale)
                 } else if !message.isEmpty {
                     Text(message)
-                        .font(.custom("ChartflowHand-Regular", size: 19))
+                        .font(.custom("ChartflowHand-Regular", size: 19 * interfaceScale))
                         .foregroundStyle(Color.chartflowSecondaryText)
                         .multilineTextAlignment(.center)
-                        .padding(.top, 34)
+                        .padding(.top, 34 * interfaceScale)
                         .frame(maxWidth: .infinity)
                 }
 
                 ForEach(friends) { friend in
-                    HStack(spacing: 10) {
+                    HStack(spacing: 10 * interfaceScale) {
                         Button {
                             openProfile(friend)
                         } label: {
@@ -1002,9 +1340,9 @@ private struct FriendHubFriendsListView: View {
                         Button {
                             openChat(friend)
                         } label: {
-                            TasqIcon("message.fill", size: 20)
+                            TasqIcon("message.fill", size: 20 * interfaceScale)
                                 .foregroundStyle(Color.chartflowBackground)
-                                .frame(width: 48, height: 48)
+                                .frame(width: 48 * interfaceScale, height: 48 * interfaceScale)
                                 .background(Color.chartflowText)
                                 .clipShape(Circle())
                         }
@@ -1012,19 +1350,20 @@ private struct FriendHubFriendsListView: View {
                     }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 18 * interfaceScale)
+            .padding(.bottom, 18 * interfaceScale)
         }
     }
 }
 
 private struct FriendHubChatFriendRow: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let friend: FriendHubAccount
     let openProfile: (FriendHubAccount) -> Void
     let openChat: (FriendHubAccount) -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 10 * interfaceScale) {
             Button {
                 openProfile(friend)
             } label: {
@@ -1035,9 +1374,9 @@ private struct FriendHubChatFriendRow: View {
             Button {
                 openChat(friend)
             } label: {
-                TasqIcon("message.fill", size: 20)
+                TasqIcon("message.fill", size: 20 * interfaceScale)
                     .foregroundStyle(Color.chartflowBackground)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 48 * interfaceScale, height: 48 * interfaceScale)
                     .background(Color.chartflowText)
                     .clipShape(Circle())
             }
@@ -1047,6 +1386,7 @@ private struct FriendHubChatFriendRow: View {
 }
 
 private struct FriendHubNotificationsView: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let requests: [FriendHubFriendRequest]
     let message: String
     let isLoading: Bool
@@ -1056,17 +1396,17 @@ private struct FriendHubNotificationsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
+            LazyVStack(spacing: 10 * interfaceScale) {
                 if isLoading {
                     ProgressView()
                         .tint(Color.chartflowText)
-                        .padding(.top, 34)
+                        .padding(.top, 34 * interfaceScale)
                 } else if !message.isEmpty {
                     Text(message)
-                        .font(.custom("ChartflowHand-Regular", size: 19))
+                        .font(.custom("ChartflowHand-Regular", size: 19 * interfaceScale))
                         .foregroundStyle(Color.chartflowSecondaryText)
                         .multilineTextAlignment(.center)
-                        .padding(.top, 34)
+                        .padding(.top, 34 * interfaceScale)
                         .frame(maxWidth: .infinity)
                 }
 
@@ -1079,13 +1419,14 @@ private struct FriendHubNotificationsView: View {
                     )
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 18 * interfaceScale)
+            .padding(.bottom, 18 * interfaceScale)
         }
     }
 }
 
 private struct FriendHubProfileSettingsView: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     @Binding var username: String
     @Binding var displayName: String
     @Binding var profileIconName: String
@@ -1099,7 +1440,7 @@ private struct FriendHubProfileSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 14 * interfaceScale) {
                 FriendHubProfilePreview(
                     account: FriendHubAccount(
                         id: "preview",
@@ -1113,7 +1454,7 @@ private struct FriendHubProfileSettingsView: View {
                     )
                 )
 
-                VStack(spacing: 12) {
+                VStack(spacing: 12 * interfaceScale) {
                     FriendHubProfileFieldLabel("Username")
                     FriendHubTextInput(prefix: "@", placeholder: "username", text: $username)
                         .onChange(of: username) { _, newValue in
@@ -1127,15 +1468,15 @@ private struct FriendHubProfileSettingsView: View {
                         }
 
                     FriendHubProfileFieldLabel("Profile picture")
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10 * interfaceScale), count: 4), spacing: 10 * interfaceScale) {
                         ForEach(FriendHubProfileStyle.icons, id: \.self) { iconName in
                             Button {
                                 profileIconName = iconName
                             } label: {
-                                TasqIcon(iconName, size: 23)
+                                TasqIcon(iconName, size: 23 * interfaceScale)
                                     .foregroundStyle(profileIconName == iconName ? Color.chartflowBackground : Color.chartflowText)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 48)
+                                    .frame(height: 48 * interfaceScale)
                                     .background(profileIconName == iconName ? Color.chartflowText : Color.chartflowBackground.opacity(0.7))
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
@@ -1144,14 +1485,14 @@ private struct FriendHubProfileSettingsView: View {
                     }
 
                     FriendHubProfileFieldLabel("Color")
-                    HStack(spacing: 10) {
+                    HStack(spacing: 10 * interfaceScale) {
                         ForEach(FriendHubProfileStyle.colorNames, id: \.self) { colorRaw in
                             Button {
                                 profileColorRaw = colorRaw
                             } label: {
                                 Circle()
                                     .fill(FriendHubProfileStyle.color(for: colorRaw))
-                                    .frame(width: 34, height: 34)
+                                    .frame(width: 34 * interfaceScale, height: 34 * interfaceScale)
                                     .overlay {
                                         Circle()
                                             .stroke(Color.chartflowText, lineWidth: profileColorRaw == colorRaw ? 3 : 1)
@@ -1170,11 +1511,11 @@ private struct FriendHubProfileSettingsView: View {
 
                     FriendHubProfileFieldLabel("Bio")
                     TextField("Bio", text: $bio, axis: .vertical)
-                        .font(.custom("ChartflowHand-Regular", size: 20))
+                        .font(.custom("ChartflowHand-Regular", size: 20 * interfaceScale))
                         .foregroundStyle(Color.chartflowText)
                         .lineLimit(2...3)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16 * interfaceScale)
+                        .padding(.vertical, 12 * interfaceScale)
                         .background(Color.chartflowBackground.opacity(0.8))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay {
@@ -1186,64 +1527,65 @@ private struct FriendHubProfileSettingsView: View {
                         }
 
                     Button(action: saveProfile) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 10 * interfaceScale) {
                             if isSaving {
                                 ProgressView()
                                     .tint(Color.chartflowBackground)
                             } else {
-                                TasqIcon("checkmark.circle.fill", size: 22)
+                                TasqIcon("checkmark.circle.fill", size: 22 * interfaceScale)
                             }
 
                             Text("Save Profile")
                         }
-                        .font(.custom("ChartflowHand-Regular", size: 22))
+                        .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
                         .fontWeight(.bold)
                         .foregroundStyle(Color.chartflowBackground)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 14 * interfaceScale)
                         .background(canSave ? Color.chartflowText : Color.chartflowText.opacity(0.35))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .disabled(!canSave)
 
                     Text(message)
-                        .font(.custom("ChartflowHand-Regular", size: 17))
+                        .font(.custom("ChartflowHand-Regular", size: 17 * interfaceScale))
                         .foregroundStyle(message.contains("saved") ? .green : Color.chartflowSecondaryText)
                         .multilineTextAlignment(.center)
                         .frame(minHeight: 34)
                 }
-                .padding(18)
+                .padding(18 * interfaceScale)
                 .chartflowBox(cornerRadius: 20, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 18 * interfaceScale)
+            .padding(.bottom, 18 * interfaceScale)
         }
     }
 }
 
 private struct FriendHubAccountRow: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let account: FriendHubAccount
 
     var body: some View {
-        HStack(spacing: 12) {
-            FriendHubProfilePicture(account: account, size: 46)
+        HStack(spacing: 12 * interfaceScale) {
+            FriendHubProfilePicture(account: account, size: 46 * interfaceScale)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 3 * interfaceScale) {
                 Text(account.displayName.isEmpty ? "@\(account.username)" : account.displayName)
-                    .font(.custom("ChartflowHand-Regular", size: 22))
+                    .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
                     .fontWeight(.bold)
                     .foregroundStyle(Color.chartflowText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
                 Text("@\(account.username)")
-                    .font(.custom("ChartflowHand-Regular", size: 16))
+                    .font(.custom("ChartflowHand-Regular", size: 16 * interfaceScale))
                     .foregroundStyle(Color.chartflowSecondaryText)
                     .lineLimit(1)
 
                 if !account.status.isEmpty {
                     Text(account.status)
-                        .font(.custom("ChartflowHand-Regular", size: 15))
+                        .font(.custom("ChartflowHand-Regular", size: 15 * interfaceScale))
                         .foregroundStyle(Color.chartflowSecondaryText)
                         .lineLimit(1)
                 }
@@ -1251,20 +1593,21 @@ private struct FriendHubAccountRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14 * interfaceScale)
+        .padding(.vertical, 12 * interfaceScale)
         .chartflowBox(cornerRadius: 16, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
     }
 }
 
 private struct FriendHubRequestRow: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let request: FriendHubFriendRequest
     let acceptRequest: (FriendHubFriendRequest) -> Void
     let declineRequest: (FriendHubFriendRequest) -> Void
     let openProfile: (FriendHubAccount) -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 12 * interfaceScale) {
             Button {
                 openProfile(request.sender)
             } label: {
@@ -1272,20 +1615,20 @@ private struct FriendHubRequestRow: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 10 * interfaceScale) {
                 Button {
                     acceptRequest(request)
                 } label: {
                     Label {
                         Text("Accept")
                     } icon: {
-                        TasqIcon("checkmark.circle.fill", size: 18)
+                        TasqIcon("checkmark.circle.fill", size: 18 * interfaceScale)
                     }
-                        .font(.custom("ChartflowHand-Regular", size: 18))
+                        .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
                         .fontWeight(.bold)
                         .foregroundStyle(Color.chartflowBackground)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 10 * interfaceScale)
                         .background(Color.chartflowText)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
@@ -1296,13 +1639,13 @@ private struct FriendHubRequestRow: View {
                     Label {
                         Text("Decline")
                     } icon: {
-                        TasqIcon("xmark.circle.fill", size: 18)
+                        TasqIcon("xmark.circle.fill", size: 18 * interfaceScale)
                     }
-                        .font(.custom("ChartflowHand-Regular", size: 18))
+                        .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
                         .fontWeight(.bold)
                         .foregroundStyle(Color.chartflowText)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 10 * interfaceScale)
                         .background(Color.chartflowSurface)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay {
@@ -1312,7 +1655,7 @@ private struct FriendHubRequestRow: View {
                 }
             }
         }
-        .padding(12)
+        .padding(12 * interfaceScale)
         .chartflowBox(cornerRadius: 18, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
     }
 }
@@ -1720,12 +2063,9 @@ private struct FriendHubChatBubble: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(isMine ? Color.chartflowText : Color.chartflowSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.chartflowText.opacity(isMine ? 0 : 0.35), lineWidth: 1.5)
-            }
+            .chartflowBox(cornerRadius: 18, wobble: 1.3,
+                          fillColor: isMine ? .chartflowText : .chartflowSurface,
+                          strokeColor: .chartflowText.opacity(isMine ? 1 : 0.5), lineWidth: 1.3)
 
             if !isMine {
                 Spacer(minLength: 42)
@@ -1825,12 +2165,8 @@ private struct FriendHubTextInput: View {
         }
         .padding(.horizontal, 16)
         .frame(minHeight: 54)
-        .background(Color.chartflowBackground.opacity(0.8))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
-        }
+        .chartflowBox(cornerRadius: 14, wobble: 1.2, fillColor: .chartflowBackground,
+                      strokeColor: .chartflowText.opacity(0.5), lineWidth: 1.3)
     }
 }
 
@@ -2576,21 +2912,22 @@ struct RoutineCardView: View {
     let chart: Chart
     @AppStorage("largerText") private var largerText = false
     @AppStorage("boldText") private var boldText = false
+    @Environment(\.interfaceScale) private var interfaceScale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(chart.name)
-                .font(.custom("ChartflowHand-Regular", size: largerText ? 23 : 20))
+                .font(.custom("ChartflowHand-Regular", size: (largerText ? 23 : 20) * interfaceScale))
                 .fontWeight(boldText ? .bold : .regular)
                 .foregroundStyle(Color.chartflowText)
             Text("\(chart.scheduleType.title) - \(chart.events.count) step\(chart.events.count == 1 ? "" : "s")")
-                .font(.custom("ChartflowHand-Regular", size: largerText ? 17 : 14))
+                .font(.custom("ChartflowHand-Regular", size: (largerText ? 17 : 14) * interfaceScale))
                 .fontWeight(boldText ? .semibold : .regular)
                 .foregroundStyle(Color.chartflowSecondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 16)
-        .padding(.horizontal, 20)
+        .padding(.vertical, 16 * interfaceScale)
+        .padding(.horizontal, 20 * interfaceScale)
         .chartflowBox(cornerRadius: 16, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
     }
 }
@@ -2599,9 +2936,11 @@ struct SettingsView: View {
     @Binding var defaultZoom: Double
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authStore: AuthenticationStore
+    @Environment(\.interfaceScale) private var interfaceScale
     @AppStorage("boxMovementEffect") private var boxMovementEffectRaw = BoxMovementEffect.doodle.rawValue
     @AppStorage("backgroundPattern") private var backgroundPatternRaw = TasqBackgroundPattern.dots.rawValue
-    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @AppStorage("appearanceMode") private var appearanceModeRaw = TasqAppearanceMode.system.rawValue
+    @AppStorage("interfaceScale") private var interfaceScaleSetting = 1.0
     @AppStorage("reduceBoxMotion") private var reduceBoxMotion = false
     @AppStorage("highContrastBoxes") private var highContrastBoxes = false
     @AppStorage("largerText") private var largerText = false
@@ -2624,82 +2963,229 @@ struct SettingsView: View {
         }
     }
 
+    private var appearanceMode: Binding<TasqAppearanceMode> {
+        Binding {
+            TasqAppearanceMode(rawValue: appearanceModeRaw) ?? .system
+        } set: { newValue in
+            newValue.save()
+            appearanceModeRaw = newValue.rawValue
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Account") {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(authStore.displayName)
-                            .font(.custom("ChartflowHand-Regular", size: 20))
-                        Text(authStore.email)
-                            .font(.custom("ChartflowHand-Regular", size: 15))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 4)
+            ZStack {
+                PolkaDotBackground()
+                    .ignoresSafeArea()
 
-                    Button(role: .destructive) {
-                        authStore.signOut()
-                        dismiss()
-                    } label: {
-                        Label {
-                            Text("Sign Out")
-                        } icon: {
-                            TasqIcon("rectangle.portrait.and.arrow.right", size: 17)
+                VStack(spacing: 14 * interfaceScale) {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Text("Settings")
+                            .font(.custom("ChartflowHand-Regular", size: 30 * interfaceScale))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color.chartflowText)
+                        Spacer(minLength: 0)
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Done")
+                                .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
+                                .fontWeight(.bold)
+                                .foregroundStyle(Color.chartflowBackground)
+                                .padding(.horizontal, 18 * interfaceScale)
+                                .padding(.vertical, 10 * interfaceScale)
+                                .background(Color.chartflowText)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                     }
-                }
+                    .padding(.horizontal, 20 * interfaceScale)
+                    .padding(.top, 18 * interfaceScale)
 
-                Section("Box Movement") {
-                    Picker("Effect", selection: boxMovementEffect) {
-                        ForEach(BoxMovementEffect.allCases) { effect in
-                            Text(effect.title).tag(effect)
+                    ScrollView {
+                        VStack(spacing: 18 * interfaceScale) {
+                            DoodlySettingsSection(title: "Account") {
+                                VStack(alignment: .leading, spacing: 8 * interfaceScale) {
+                                    Text(authStore.displayName)
+                                        .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(Color.chartflowText)
+                                    Text(authStore.email)
+                                        .font(.custom("ChartflowHand-Regular", size: 16 * interfaceScale))
+                                        .foregroundStyle(Color.chartflowSecondaryText)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Divider()
+
+                                Button(role: .destructive) {
+                                    authStore.signOut()
+                                    dismiss()
+                                } label: {
+                                    HStack(spacing: 12 * interfaceScale) {
+                                        TasqIcon("rectangle.portrait.and.arrow.right", size: 20 * interfaceScale)
+                                            .foregroundStyle(.blue)
+                                        Text("Sign Out")
+                                            .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(.red)
+                                        Spacer(minLength: 0)
+                                    }
+                                }
+                            }
+
+                            DoodlySettingsSection(title: "Box Movement") {
+                                DoodlyOptionRow(
+                                    options: BoxMovementEffect.allCases,
+                                    selection: boxMovementEffect,
+                                    title: { $0.title }
+                                )
+                                Text(boxMovementEffect.wrappedValue.description)
+                                    .font(.custom("ChartflowHand-Regular", size: 15 * interfaceScale))
+                                    .foregroundStyle(Color.chartflowSecondaryText)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+
+                            DoodlySettingsSection(title: "Background") {
+                                DoodlyOptionRow(
+                                    options: TasqBackgroundPattern.allCases,
+                                    selection: backgroundPattern,
+                                    title: { $0.title }
+                                )
+                            }
+
+                            DoodlySettingsSection(title: "Appearance") {
+                                DoodlyOptionRow(
+                                    options: TasqAppearanceMode.allCases,
+                                    selection: appearanceMode,
+                                    title: { $0.title }
+                                )
+                            }
+
+                            DoodlySettingsSection(title: "Interface Sizing") {
+                                AccountSizingPreview(scale: interfaceScaleSetting)
+                                Slider(value: $interfaceScaleSetting, in: 0.8...1.35, step: 0.05) {
+                                    Text("Interface size")
+                                }
+                                .tint(Color.chartflowText)
+                                Text("\(Int(interfaceScaleSetting * 100))%")
+                                    .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(Color.chartflowText)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+
+                            DoodlySettingsSection(title: "Accessibility") {
+                                DoodlyToggleRow(title: "Reduce box motion", isOn: $reduceBoxMotion)
+                                DoodlyToggleRow(title: "Higher contrast boxes", isOn: $highContrastBoxes)
+                                DoodlyToggleRow(title: "Larger routine text", isOn: $largerText)
+                                DoodlyToggleRow(title: "Bold text", isOn: $boldText)
+                                DoodlyToggleRow(title: "Simpler celebration", isOn: $calmCelebrations)
+                            }
+
+                            DoodlySettingsSection(title: "Default Chart Zoom") {
+                                Slider(value: $defaultZoom, in: 0.8...2.0, step: 0.1) {
+                                    Text("Default zoom")
+                                }
+                                .tint(Color.chartflowText)
+                                Text("\(Int(defaultZoom * 100))%")
+                                    .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(Color.chartflowText)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
                         }
+                        .padding(.horizontal, 20 * interfaceScale)
+                        .padding(.bottom, 28 * interfaceScale)
                     }
-                    .pickerStyle(.segmented)
-
-                    Text(boxMovementEffect.wrappedValue.description)
-                        .font(.custom("ChartflowHand-Regular", size: 15))
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Background") {
-                    Picker("Pattern", selection: backgroundPattern) {
-                        ForEach(TasqBackgroundPattern.allCases) { pattern in
-                            Text(pattern.title).tag(pattern)
-                        }
-                    }
-                }
-
-                Section("Appearance") {
-                    Toggle("Dark mode", isOn: $darkModeEnabled)
-                }
-
-                Section("Accessibility") {
-                    Toggle("Reduce box motion", isOn: $reduceBoxMotion)
-                    Toggle("Higher contrast boxes", isOn: $highContrastBoxes)
-                    Toggle("Larger routine text", isOn: $largerText)
-                    Toggle("Bold text", isOn: $boldText)
-                    Toggle("Simpler celebration", isOn: $calmCelebrations)
-                }
-
-                Section("Default Chart Zoom") {
-                    Slider(value: $defaultZoom, in: 0.8...2.0, step: 0.1) {
-                        Text("Default zoom")
-                    }
-                    Text("\(Int(defaultZoom * 100))%")
-                        .font(.custom("ChartflowHand-Regular", size: 18))
                 }
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+private struct DoodlySettingsSection<Content: View>: View {
+    @Environment(\.interfaceScale) private var interfaceScale
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10 * interfaceScale) {
+            Text(title)
+                .font(.custom("ChartflowHand-Regular", size: 24 * interfaceScale))
+                .fontWeight(.bold)
+                .foregroundStyle(Color.chartflowSecondaryText)
+                .padding(.leading, 4 * interfaceScale)
+
+            VStack(spacing: 12 * interfaceScale) {
+                content
+            }
+            .padding(18 * interfaceScale)
+            .chartflowBox(cornerRadius: 24, wobble: 2, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 2)
+        }
+    }
+}
+
+private struct DoodlyOptionRow<Option: Identifiable & Equatable>: View {
+    @Environment(\.interfaceScale) private var interfaceScale
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
+
+    var body: some View {
+        HStack(spacing: 8 * interfaceScale) {
+            ForEach(options) { option in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selection = option
                     }
+                } label: {
+                    Text(title(option))
+                        .font(.custom("ChartflowHand-Regular", size: 17 * interfaceScale))
+                        .fontWeight(.bold)
+                        .foregroundStyle(selection == option ? Color.chartflowBackground : Color.chartflowText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10 * interfaceScale)
+                        .background(selection == option ? Color.chartflowText : Color.chartflowBackground.opacity(0.65))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct DoodlyToggleRow: View {
+    @Environment(\.interfaceScale) private var interfaceScale
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isOn.toggle()
+            }
+        } label: {
+            HStack(spacing: 12 * interfaceScale) {
+                Text(title)
+                    .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
+                    .foregroundStyle(Color.chartflowText)
+                Spacer(minLength: 0)
+                ZStack(alignment: isOn ? .trailing : .leading) {
+                    Capsule()
+                        .fill(isOn ? Color.chartflowText : Color.chartflowBackground.opacity(0.75))
+                        .frame(width: 52 * interfaceScale, height: 30 * interfaceScale)
+                    Circle()
+                        .fill(isOn ? Color.chartflowBackground : Color.chartflowSecondaryText)
+                        .frame(width: 24 * interfaceScale, height: 24 * interfaceScale)
+                        .padding(.horizontal, 3 * interfaceScale)
                 }
             }
         }
+        .buttonStyle(.plain)
     }
 }
 

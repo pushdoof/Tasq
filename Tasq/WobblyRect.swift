@@ -57,7 +57,7 @@ extension Color {
         Color(UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 0.07, green: 0.07, blue: 0.08, alpha: 1)
-                : UIColor.white
+                : UIColor(red: 0.99, green: 0.98, blue: 0.95, alpha: 1)
         })
     }
 
@@ -73,7 +73,7 @@ extension Color {
         Color(UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor.white
-                : UIColor.black
+                : UIColor(red: 0.16, green: 0.18, blue: 0.16, alpha: 1)
         })
     }
 
@@ -89,7 +89,7 @@ extension Color {
         Color(UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(white: 1, alpha: 0.12)
-                : UIColor(white: 0, alpha: 0.18)
+                : UIColor(white: 0, alpha: 0.10)
         })
     }
 }

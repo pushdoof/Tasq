@@ -536,7 +536,7 @@ final class FriendHubSearchStore: ObservableObject {
     }
 
     func acceptChatSafety(for friendID: String) {
-        UserDefaults.standard.set(true, forKey: chatSafetyKey(for: friendID))
+        UserDefaults.standard.set(FriendHubChatSafety.currentSafetyVersion, forKey: chatSafetyKey(for: friendID))
         chatSafetyAccepted = true
         chatMessage = ""
     }
@@ -1112,7 +1112,7 @@ final class FriendHubSearchStore: ObservableObject {
     }
 
     private func hasAcceptedChatSafety(with friendID: String) -> Bool {
-        UserDefaults.standard.bool(forKey: chatSafetyKey(for: friendID))
+        UserDefaults.standard.integer(forKey: chatSafetyKey(for: friendID)) >= FriendHubChatSafety.currentSafetyVersion
     }
 
     private func chatSafetyKey(for friendID: String) -> String {
@@ -1169,6 +1169,7 @@ enum FriendHubUsernameValidator {
 }
 
 enum FriendHubChatSafety {
+    static let currentSafetyVersion = 2
     static let maxImageDataBytes = 650_000
 
     static func validationMessage(for message: String) -> String? {

@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseCore
+import UserNotifications
 #if canImport(GoogleSignIn)
 import GoogleSignIn
 #endif
@@ -10,6 +11,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseApp.configure()
+        UNUserNotificationCenter.current().delegate = TasqNotificationRouter.shared
+        // Remove pre-migration reminders that could point to the wrong routine.
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let legacy = requests.map(\.identifier).filter {
+                $0 == "alarm"
+            }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: legacy)
+        }
         return true
     }
 
@@ -23,12 +32,26 @@ struct TasqApp: App {
     @StateObject private var authStore = AuthenticationStore()
     @StateObject private var progressStore = UserProgressStore()
     @State private var showSplash = true
-    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @State private var forceAccountSetupWizard = false
+    @AppStorage("appearanceMode") private var appearanceModeRaw = TasqAppearanceMode.system.rawValue
+    @AppStorage("interfaceScale") private var interfaceScale = 1.0
+
+    private var isFriendHubVisualCheck: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-friend-hub-preview")
+        #else
+        false
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if showSplash {
+                if isFriendHubVisualCheck {
+                    #if DEBUG
+                    FriendGroupVisualCheck()
+                    #endif
+                } else if showSplash {
                     TasqSplashView()
                 } else if authStore.isSignedIn {
                     Group {
@@ -37,6 +60,20 @@ struct TasqApp: App {
                                 .tint(Color.chartflowText)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .background(Color.chartflowBackground)
+                        } else if progressStore.needsAccountSetup || forceAccountSetupWizard {
+                            AccountSetupWizardView(
+                                birthday: $progressStore.birthday,
+                                appearanceMode: appearanceMode,
+                                interfaceScale: $interfaceScale,
+                                finishSetup: {
+                                    forceAccountSetupWizard = false
+                                    progressStore.completeAccountSetup(
+                                        birthday: progressStore.birthday,
+                                        defaultZoom: progressStore.defaultZoom,
+                                        appearanceMode: TasqAppearanceMode(rawValue: appearanceModeRaw) ?? .system
+                                    )
+                                }
+                            )
                         } else if progressStore.hasSeenOnboarding {
                             MindflowHomeScreen(charts: $progressStore.charts, defaultZoom: $progressStore.defaultZoom)
                         } else {
@@ -49,9 +86,17 @@ struct TasqApp: App {
             }
             .environmentObject(authStore)
             .environmentObject(progressStore)
-            .preferredColorScheme(darkModeEnabled ? .dark : .light)
+            .environment(\.interfaceScale, interfaceScale)
+            .preferredColorScheme((TasqAppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
+            .background {
+                SecretKeySequenceReader(sequence: "pushyaduttcoolmonkeyrafi") {
+                    guard authStore.isSignedIn, !showSplash else { return }
+                    forceAccountSetupWizard = true
+                }
+            }
             .onChange(of: authStore.user) { _, user in
                 progressStore.startSyncing(for: user)
+                forceAccountSetupWizard = false
             }
             .onChange(of: progressStore.charts) { _, _ in
                 progressStore.scheduleSave()
@@ -60,6 +105,9 @@ struct TasqApp: App {
                 progressStore.scheduleSave()
             }
             .onChange(of: progressStore.defaultZoom) { _, _ in
+                progressStore.scheduleSave()
+            }
+            .onChange(of: interfaceScale) { _, _ in
                 progressStore.scheduleSave()
             }
             .onChange(of: scenePhase) { _, newPhase in
@@ -82,6 +130,79 @@ struct TasqApp: App {
             .onAppear {
                 progressStore.startSyncing(for: authStore.user)
             }
+        }
+    }
+
+    private var appearanceMode: Binding<TasqAppearanceMode> {
+        Binding {
+            TasqAppearanceMode(rawValue: appearanceModeRaw) ?? .system
+        } set: { newValue in
+            newValue.save()
+            appearanceModeRaw = newValue.rawValue
+            progressStore.scheduleSave()
+        }
+    }
+}
+
+private struct SecretKeySequenceReader: UIViewRepresentable {
+    let sequence: String
+    let onMatch: () -> Void
+
+    func makeUIView(context: Context) -> SecretKeySequenceView {
+        let view = SecretKeySequenceView()
+        view.sequence = sequence
+        view.onMatch = onMatch
+        DispatchQueue.main.async {
+            view.becomeFirstResponder()
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: SecretKeySequenceView, context: Context) {
+        uiView.sequence = sequence
+        uiView.onMatch = onMatch
+        DispatchQueue.main.async {
+            if !uiView.isFirstResponder {
+                uiView.becomeFirstResponder()
+            }
+        }
+    }
+}
+
+private final class SecretKeySequenceView: UIView {
+    var sequence = ""
+    var onMatch: (() -> Void)?
+    private var buffer = ""
+
+    override var canBecomeFirstResponder: Bool {
+        true
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var handledPress = false
+
+        for press in presses {
+            guard let key = press.key,
+                  key.modifierFlags.isEmpty,
+                  let character = key.charactersIgnoringModifiers.lowercased().first else {
+                continue
+            }
+
+            buffer.append(character)
+            if buffer.count > sequence.count {
+                buffer = String(buffer.suffix(sequence.count))
+            }
+
+            if buffer == sequence {
+                buffer = ""
+                onMatch?()
+            }
+
+            handledPress = true
+        }
+
+        if !handledPress {
+            super.pressesBegan(presses, with: event)
         }
     }
 }

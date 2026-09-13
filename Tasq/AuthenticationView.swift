@@ -145,6 +145,7 @@ private enum AuthenticationError: LocalizedError {
 
 struct AuthenticationView: View {
     @EnvironmentObject private var authStore: AuthenticationStore
+    @Environment(\.interfaceScale) private var interfaceScale
     @State private var email = ""
     @State private var password = ""
     @State private var isCreatingAccount = false
@@ -164,18 +165,24 @@ struct AuthenticationView: View {
                     Spacer(minLength: 28)
 
                     VStack(spacing: 10) {
+                        DoodleSun()
                         Text("Tasq")
-                            .font(.custom("ChartflowHand-Regular", size: 48))
+                            .font(.custom("ChartflowHand-Regular", size: 48 * interfaceScale))
                             .fontWeight(.black)
                             .foregroundStyle(Color.chartflowText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
 
                         Text(isCreatingAccount ? "Create your account" : "Sign in to your account")
-                            .font(.custom("ChartflowHand-Regular", size: 25))
+                            .font(.custom("ChartflowHand-Regular", size: 25 * interfaceScale))
                             .foregroundStyle(Color.chartflowSecondaryText)
                     }
                     .padding(.top, 16)
+
+                    Text("A little space for your plans, your people, and you.")
+                        .doodleFont(20)
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                        .multilineTextAlignment(.center)
 
                     VStack(spacing: 14) {
                         AuthTextField(
@@ -198,18 +205,19 @@ struct AuthenticationView: View {
                                     ProgressView()
                                         .tint(Color.chartflowBackground)
                                 } else {
-                                    TasqIcon(isCreatingAccount ? "person.badge.plus.fill" : "person.fill.checkmark", size: 22)
+                                    TasqIcon(isCreatingAccount ? "person.badge.plus.fill" : "person.fill.checkmark", size: 22 * interfaceScale)
                                 }
 
                                 Text(isCreatingAccount ? "Create Account" : "Sign In")
                             }
-                            .font(.custom("ChartflowHand-Regular", size: 22))
+                            .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
                             .fontWeight(.bold)
                             .foregroundStyle(Color.chartflowBackground)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(canSubmit ? Color.chartflowText : Color.chartflowText.opacity(0.35))
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .padding(.vertical, 16 * interfaceScale)
+                            .chartflowBox(cornerRadius: 16, wobble: 1.4,
+                                          fillColor: canSubmit ? .chartflowText : Color.chartflowText.opacity(0.35),
+                                          strokeColor: .chartflowText, lineWidth: 1.5)
                         }
                         .disabled(!canSubmit)
 
@@ -217,26 +225,22 @@ struct AuthenticationView: View {
                             Task { await authStore.signInWithGoogle() }
                         } label: {
                             HStack(spacing: 10) {
-                                TasqIcon("g.circle.fill", size: 22)
+                                TasqIcon("g.circle.fill", size: 22 * interfaceScale)
                                 Text("Continue with Google")
                             }
-                            .font(.custom("ChartflowHand-Regular", size: 22))
+                            .font(.custom("ChartflowHand-Regular", size: 22 * interfaceScale))
                             .fontWeight(.bold)
                             .foregroundStyle(Color.chartflowText)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.chartflowSurface)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color.chartflowText, lineWidth: 2)
-                            }
+                            .padding(.vertical, 16 * interfaceScale)
+                            .chartflowBox(cornerRadius: 16, wobble: 1.4, fillColor: .chartflowSurface,
+                                          strokeColor: .chartflowText, lineWidth: 1.5)
                         }
                         .disabled(authStore.isWorking)
 
                         if let errorMessage = authStore.errorMessage {
                             Text(errorMessage)
-                                .font(.custom("ChartflowHand-Regular", size: 17))
+                                .font(.custom("ChartflowHand-Regular", size: 17 * interfaceScale))
                                 .foregroundStyle(errorMessage.contains("sent") ? .green : .red)
                                 .multilineTextAlignment(.center)
                                 .padding(.top, 2)
@@ -259,7 +263,7 @@ struct AuthenticationView: View {
                         .opacity(isCreatingAccount ? 0 : 1)
                         .disabled(isCreatingAccount || authStore.isWorking)
                     }
-                    .font(.custom("ChartflowHand-Regular", size: 18))
+                    .font(.custom("ChartflowHand-Regular", size: 18 * interfaceScale))
                     .foregroundStyle(Color.chartflowText)
 
                     Spacer(minLength: 32)
@@ -289,6 +293,7 @@ private enum AuthField: Hashable {
 }
 
 private struct AuthTextField: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let title: String
     @Binding var text: String
     let systemImage: String
@@ -297,8 +302,8 @@ private struct AuthTextField: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            TasqIcon(systemImage, size: 18)
-                .frame(width: 30)
+            TasqIcon(systemImage, size: 18 * interfaceScale)
+                .frame(width: 30 * interfaceScale)
 
             TextField(title, text: $text)
                 .keyboardType(keyboardType)
@@ -306,41 +311,34 @@ private struct AuthTextField: View {
                 .autocorrectionDisabled()
                 .textContentType(textContentType)
         }
-        .font(.custom("ChartflowHand-Regular", size: 21))
+        .font(.custom("ChartflowHand-Regular", size: 21 * interfaceScale))
         .foregroundStyle(Color.chartflowText)
-        .padding(.horizontal, 16)
-        .frame(minHeight: 56)
-        .background(Color.chartflowBackground.opacity(0.8))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
-        }
+        .padding(.horizontal, 16 * interfaceScale)
+        .frame(minHeight: 56 * interfaceScale)
+        .chartflowBox(cornerRadius: 14, wobble: 1.2, fillColor: .chartflowBackground,
+                      strokeColor: .chartflowText.opacity(0.5), lineWidth: 1.3)
     }
 }
 
 private struct AuthSecureField: View {
+    @Environment(\.interfaceScale) private var interfaceScale
     let title: String
     @Binding var text: String
 
     var body: some View {
         HStack(spacing: 12) {
-            TasqIcon("lock.fill", size: 18)
-                .frame(width: 30)
+            TasqIcon("lock.fill", size: 18 * interfaceScale)
+                .frame(width: 30 * interfaceScale)
 
             SecureField(title, text: $text)
                 .textContentType(.password)
         }
-        .font(.custom("ChartflowHand-Regular", size: 21))
+        .font(.custom("ChartflowHand-Regular", size: 21 * interfaceScale))
         .foregroundStyle(Color.chartflowText)
-        .padding(.horizontal, 16)
-        .frame(minHeight: 56)
-        .background(Color.chartflowBackground.opacity(0.8))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.chartflowText.opacity(0.35), lineWidth: 1.5)
-        }
+        .padding(.horizontal, 16 * interfaceScale)
+        .frame(minHeight: 56 * interfaceScale)
+        .chartflowBox(cornerRadius: 14, wobble: 1.2, fillColor: .chartflowBackground,
+                      strokeColor: .chartflowText.opacity(0.5), lineWidth: 1.3)
     }
 }
 

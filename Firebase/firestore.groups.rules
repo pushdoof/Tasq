@@ -1,0 +1,164 @@
+rules_version = '2';
+// Prototype extension for the existing named database "default".
+// Merge the friendHubGroups match into the deployed rules; this standalone file
+// deliberately denies unrelated collections and is used by the local test suite.
+// Groups: immutable id/createdAt, name <=32, adminID, <=20 memberIDs,
+// memberNames map keyed exactly by memberIDs, gamesEnabled/focusEnabled booleans.
+// Presence: per-visit UUID; immutable userID/id; avatar JSON map; normalized x/y;
+// roomID; isMoving; server lastSeen; reaction and reactionAt.
+// Messages: immutable id/senderID/senderName/text <=500/server createdAt.
+// Activities: tictactoe = nine cells, xID/oID, turn; focus = endsAt timestamp.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function group(g) { return get(/databases/$(database)/documents/friendHubGroups/$(g)).data; }
+    function member(g) { return signedIn() && request.auth.uid in group(g).memberIDs; }
+    function admin(g) { return member(g) && group(g).adminID == request.auth.uid; }
+    function text(value, max) { return value is string && value.size() <= max; }
+    function friends() { return get(/databases/$(database)/documents/friendHubProfiles/$(request.auth.uid)).data.friendIDs; }
+    function validNames(names) {
+      let count = names.size();
+      return (count <= 0 || (names[0] is string && names[0].size() <= 32))
+        && (count <= 1 || (names[1] is string && names[1].size() <= 32))
+        && (count <= 2 || (names[2] is string && names[2].size() <= 32))
+        && (count <= 3 || (names[3] is string && names[3].size() <= 32))
+        && (count <= 4 || (names[4] is string && names[4].size() <= 32))
+        && (count <= 5 || (names[5] is string && names[5].size() <= 32))
+        && (count <= 6 || (names[6] is string && names[6].size() <= 32))
+        && (count <= 7 || (names[7] is string && names[7].size() <= 32))
+        && (count <= 8 || (names[8] is string && names[8].size() <= 32))
+        && (count <= 9 || (names[9] is string && names[9].size() <= 32))
+        && (count <= 10 || (names[10] is string && names[10].size() <= 32))
+        && (count <= 11 || (names[11] is string && names[11].size() <= 32))
+        && (count <= 12 || (names[12] is string && names[12].size() <= 32))
+        && (count <= 13 || (names[13] is string && names[13].size() <= 32))
+        && (count <= 14 || (names[14] is string && names[14].size() <= 32))
+        && (count <= 15 || (names[15] is string && names[15].size() <= 32))
+        && (count <= 16 || (names[16] is string && names[16].size() <= 32))
+        && (count <= 17 || (names[17] is string && names[17].size() <= 32))
+        && (count <= 18 || (names[18] is string && names[18].size() <= 32))
+        && (count <= 19 || (names[19] is string && names[19].size() <= 32));
+    }
+    function validGroup(d, id) {
+      return d.keys().hasOnly(['id','name','adminID','memberIDs','memberNames','gamesEnabled','focusEnabled','createdAt'])
+        && d.keys().hasAll(['id','name','adminID','memberIDs','memberNames','gamesEnabled','focusEnabled','createdAt'])
+        && d.id == id && text(d.name, 32) && d.name.size() > 0
+        && text(d.adminID, 128) && d.memberIDs is list && d.memberIDs.size() > 0 && d.memberIDs.size() <= 20
+        && d.memberIDs.toSet().size() == d.memberIDs.size() && d.adminID in d.memberIDs
+        && d.memberNames is map && d.memberNames.keys().toSet() == d.memberIDs.toSet()
+        && validNames(d.memberNames.values())
+        && d.memberIDs.join('').size() <= 2560
+        && d.memberNames.size() <= 20 && d.gamesEnabled is bool && d.focusEnabled is bool && d.createdAt is timestamp;
+    }
+    match /friendHubGroups/{gid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIDs;
+      allow create: if signedIn() && validGroup(request.resource.data, gid)
+        && request.resource.data.adminID == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.memberIDs.toSet().difference([request.auth.uid].toSet()).difference(friends().toSet()).size() == 0;
+      allow update: if signedIn() && request.auth.uid in resource.data.memberIDs
+        && validGroup(request.resource.data, gid)
+        && request.resource.data.id == resource.data.id && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          (resource.data.adminID == request.auth.uid
+            && request.resource.data.memberIDs.toSet().difference(resource.data.memberIDs.toSet()).difference(friends().toSet()).size() == 0)
+          || (resource.data.adminID != request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIDs','memberNames'])
+            && request.resource.data.memberIDs.toSet() == resource.data.memberIDs.toSet().difference([request.auth.uid].toSet())
+            && request.resource.data.memberNames.diff(resource.data.memberNames).affectedKeys().hasOnly([request.auth.uid]))
+        );
+      allow delete: if false;
+
+      match /presence/{pid} {
+        function validAvatar(a) {
+          return a is map && a.keys().hasOnly(['bodyColorRaw','mouthRaw','eyesRaw','hairRaw','furRaw','itemRaw','hairHue','hairSaturation','hairBrightness','scarfHue'])
+            && a.keys().hasAll(['bodyColorRaw','mouthRaw','eyesRaw','hairRaw','furRaw','itemRaw','hairHue','hairSaturation','hairBrightness','scarfHue'])
+            && text(a.bodyColorRaw, 32) && text(a.mouthRaw, 32) && text(a.eyesRaw, 32)
+            && text(a.hairRaw, 32) && text(a.furRaw, 32) && text(a.itemRaw, 32)
+            && a.hairHue is number && a.hairHue >= 0 && a.hairHue <= 1
+            && a.hairSaturation is number && a.hairSaturation >= 0 && a.hairSaturation <= 1
+            && a.hairBrightness is number && a.hairBrightness >= 0 && a.hairBrightness <= 1
+            && a.scarfHue is number && a.scarfHue >= 0 && a.scarfHue <= 1;
+        }
+        function validPresence(d) {
+          return d.keys().hasOnly(['id','userID','name','avatar','roomID','x','y','isMoving','lastSeen','reaction','reactionAt'])
+            && d.keys().hasAll(['id','userID','name','avatar','roomID','x','y','isMoving','lastSeen','reaction','reactionAt'])
+            && d.id == pid && d.userID == request.auth.uid && text(d.name, 32) && validAvatar(d.avatar)
+            && d.roomID in ['lounge','quiet','arcade']
+            && (d.roomID != 'arcade' || group(gid).gamesEnabled)
+            && (d.roomID != 'quiet' || group(gid).focusEnabled)
+            && d.x is number && d.x >= 0.12 && d.x <= 0.88
+            && d.y is number && d.y >= 0.40 && d.y <= 0.87
+            && d.isMoving is bool && d.lastSeen == request.time
+            && d.reaction in ['', '👋', '✨', '❤️', '☕'] && d.reactionAt is timestamp
+            && d.reactionAt <= request.time + duration.value(5, 's');
+        }
+        allow read: if member(gid);
+        allow create: if member(gid) && validPresence(request.resource.data);
+        allow update: if member(gid) && resource.data.userID == request.auth.uid && validPresence(request.resource.data);
+        allow delete: if signedIn() && resource.data.userID == request.auth.uid;
+      }
+      match /messages/{mid} {
+        allow read: if member(gid);
+        allow create: if member(gid)
+          && request.resource.data.keys().hasOnly(['id','senderID','senderName','text','createdAt'])
+          && request.resource.data.keys().hasAll(['id','senderID','senderName','text','createdAt'])
+          && request.resource.data.id == mid && request.resource.data.senderID == request.auth.uid
+          && text(request.resource.data.senderName, 32)
+          && text(request.resource.data.text, 500) && request.resource.data.text.size() > 0
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+      match /activities/focus {
+        function validFocus(d) {
+          return d.keys().hasOnly(['endsAt']) && d.endsAt is timestamp
+            && d.endsAt > request.time && d.endsAt <= request.time + duration.value(26, 'm');
+        }
+        allow read: if member(gid);
+        allow create, update: if admin(gid) && group(gid).focusEnabled && validFocus(request.resource.data);
+        allow delete: if admin(gid);
+      }
+      match /activities/tictactoe {
+        function validGame(d) {
+          return d.keys().hasOnly(['board','xID','oID','turn']) && d.keys().hasAll(['board','xID','oID','turn'])
+            && d.board is list && d.board.size() == 9 && d.board.toSet().hasOnly(['','X','O'])
+            && text(d.xID, 128) && text(d.oID, 128) && d.turn in ['X','O']
+            && (d.xID == '' || d.xID in group(gid).memberIDs)
+            && (d.oID == '' || (d.oID in group(gid).memberIDs && d.xID != '' && d.xID != d.oID));
+        }
+        function emptyBoard(d) { return d.board == ['','','','','','','','',''] && d.turn == 'X'; }
+        function line(b, a, c, d) { return b[a] != '' && b[a] == b[c] && b[a] == b[d]; }
+        function finished(b) {
+          return !b.hasAny(['']) || line(b,0,1,2) || line(b,3,4,5) || line(b,6,7,8)
+            || line(b,0,3,6) || line(b,1,4,7) || line(b,2,5,8) || line(b,0,4,8) || line(b,2,4,6);
+        }
+        function cell(b, a, i, mark) { return b[i] == a[i] || (b[i] == '' && a[i] == mark); }
+        function changed(b,a,i) { return b[i] == a[i] ? 0 : 1; }
+        function move(b,a,mark) {
+          return cell(b,a,0,mark) && cell(b,a,1,mark) && cell(b,a,2,mark)
+            && cell(b,a,3,mark) && cell(b,a,4,mark) && cell(b,a,5,mark)
+            && cell(b,a,6,mark) && cell(b,a,7,mark) && cell(b,a,8,mark)
+            && changed(b,a,0)+changed(b,a,1)+changed(b,a,2)+changed(b,a,3)+changed(b,a,4)
+              +changed(b,a,5)+changed(b,a,6)+changed(b,a,7)+changed(b,a,8) == 1;
+        }
+        function validTransition(b,a) {
+          let done = finished(b.board);
+          return (emptyBoard(a) && a.xID == '' && a.oID == ''
+              && (admin(gid) || (done && request.auth.uid in [b.xID,b.oID])))
+            || (a.board == b.board && a.turn == b.turn && !done
+              && ((b.xID == '' && a.xID == request.auth.uid && a.oID == b.oID)
+                || (b.oID == '' && a.oID == request.auth.uid && a.xID == b.xID)))
+            || (a.xID == b.xID && a.oID == b.oID && b.xID != '' && b.oID != ''
+              && !done && request.auth.uid == (b.turn == 'X' ? b.xID : b.oID)
+              && a.turn == (b.turn == 'X' ? 'O' : 'X') && move(b.board,a.board,b.turn));
+        }
+        allow read: if member(gid);
+        allow create: if member(gid) && group(gid).gamesEnabled && validGame(request.resource.data)
+          && emptyBoard(request.resource.data) && request.resource.data.xID == request.auth.uid && request.resource.data.oID == '';
+        allow update: if member(gid) && group(gid).gamesEnabled && validGame(request.resource.data)
+          && validTransition(resource.data, request.resource.data);
+        allow delete: if false;
+      }
+    }
+  }
+}

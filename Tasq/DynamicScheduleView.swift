@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DynamicScheduleWizardView: View {
     @Binding var chart: Chart
+    @State private var draftChart = Chart.blank(type: .dynamic)
     @Environment(\.dismiss) private var dismiss
     @State private var step = DynamicScheduleWizardStep.window
 
@@ -38,8 +39,8 @@ struct DynamicScheduleWizardView: View {
 
                 wizardFooter
             }
-            .background(Color.chartflowBackground.ignoresSafeArea())
-            .navigationTitle("Dynamic Setup")
+            .background(PolkaDotBackground().ignoresSafeArea())
+            .navigationTitle("A plan that fits")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -50,8 +51,9 @@ struct DynamicScheduleWizardView: View {
             }
         }
         .onAppear {
-            chart.ensureDynamicConfiguration()
-            chart.regenerateDynamicEvents()
+            draftChart = chart
+            draftChart.ensureDynamicConfiguration()
+            draftChart.regenerateDynamicEvents()
         }
     }
 
@@ -80,7 +82,20 @@ struct DynamicScheduleWizardView: View {
         .background(Color.chartflowSurface)
     }
 
+    private var planIssue: String? {
+        Chart.dynamicPlan(from: draftChart.dynamicConfiguration ?? .standard).issue
+    }
+
     private var wizardFooter: some View {
+      VStack(spacing: 10) {
+        if let issue = planIssue {
+            Text(issue)
+                .doodleFont(17, relativeTo: .callout)
+                .foregroundStyle(Color.chartflowText)
+                .padding(14)
+                .chartflowBox(fillColor: .tasqPeach, strokeColor: .chartflowText, lineWidth: 1.2)
+                .padding(.horizontal, 22)
+        }
         HStack(spacing: 12) {
             Button {
                 if let previous = step.previous {
@@ -94,12 +109,12 @@ struct DynamicScheduleWizardView: View {
                 }
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(DoodleButtonStyle())
             .disabled(!canGoBack)
 
             Button {
                 if let next = step.next {
-                    chart.regenerateDynamicEvents()
+                    draftChart.regenerateDynamicEvents()
                     withAnimation { step = next }
                 } else {
                     completeSetup()
@@ -112,11 +127,13 @@ struct DynamicScheduleWizardView: View {
                 }
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(DoodleButtonStyle(prominent: true))
+            .disabled(isLastStep && planIssue != nil)
         }
         .font(.custom("ChartflowHand-Regular", size: 18))
         .padding(18)
         .background(Color.chartflowSurface)
+      }
     }
 
     private var windowStep: some View {
@@ -141,17 +158,20 @@ struct DynamicScheduleWizardView: View {
 
     private var tasksStep: some View {
         WizardScrollContent {
-            if let tasks = chart.dynamicConfiguration?.dailyTasks {
+            if let tasks = draftChart.dynamicConfiguration?.dailyTasks {
                 ForEach(tasks.indices, id: \.self) { index in
                     HStack(spacing: 10) {
                         TextField("Daily thing", text: taskNameBinding(at: index))
-                            .textFieldStyle(.roundedBorder)
-                            .onChange(of: chart.dynamicConfiguration?.dailyTasks[index].name ?? "") { _, _ in regenerateEvents() }
+                            .textFieldStyle(.plain)
+                            .doodleFont(21, relativeTo: .body)
+                            .padding(16)
+                            .chartflowBox(fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.3)
+                            .onChange(of: draftChart.dynamicConfiguration?.dailyTasks[index].name ?? "") { _, _ in regenerateEvents() }
 
                         if tasks.count > 1 {
                             Button(role: .destructive) {
-                                chart.dynamicConfiguration?.dailyTasks.remove(at: index)
-                                chart.regenerateDynamicEvents()
+                                draftChart.dynamicConfiguration?.dailyTasks.remove(at: index)
+                                draftChart.regenerateDynamicEvents()
                             } label: {
                                 TasqIcon("minus.circle.fill", size: 20)
                             }
@@ -162,10 +182,10 @@ struct DynamicScheduleWizardView: View {
             }
 
             Button {
-                chart.dynamicConfiguration?.dailyTasks.append(
+                draftChart.dynamicConfiguration?.dailyTasks.append(
                     DynamicScheduleTask(name: "", timeRank: 2, importanceRank: 3)
                 )
-                chart.regenerateDynamicEvents()
+                draftChart.regenerateDynamicEvents()
             } label: {
                 Label {
                     Text("Add Daily Thing")
@@ -174,13 +194,16 @@ struct DynamicScheduleWizardView: View {
                 }
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(DoodleButtonStyle())
         }
     }
 
     private var prioritiesStep: some View {
         WizardScrollContent {
-            if let tasks = chart.dynamicConfiguration?.dailyTasks {
+            Text("Time rank 1 gets the most time. Importance 5 goes first. Pinned tasks stay at their chosen time.")
+                .padding(16)
+                .chartflowBox(fillColor: .tasqLilac, strokeColor: .chartflowText, lineWidth: 1.2)
+            if let tasks = draftChart.dynamicConfiguration?.dailyTasks {
                 ForEach(tasks.indices, id: \.self) { index in
                     DynamicScheduleTaskRow(
                         task: taskBinding(at: index),
@@ -196,25 +219,28 @@ struct DynamicScheduleWizardView: View {
     private var configurationStep: some View {
         WizardScrollContent {
             Stepper(value: configurationBinding(\.minimumTaskMinutes), in: 1...30, step: 1) {
-                Text("Minimum task: \(chart.dynamicConfiguration?.minimumTaskMinutes ?? 5) min")
+                Text("Minimum task: \(draftChart.dynamicConfiguration?.minimumTaskMinutes ?? 5) min")
             }
-            .onChange(of: chart.dynamicConfiguration?.minimumTaskMinutes ?? 5) { _, _ in regenerateEvents() }
+            .onChange(of: draftChart.dynamicConfiguration?.minimumTaskMinutes ?? 5) { _, _ in regenerateEvents() }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Importance Bias: \(chart.dynamicConfiguration?.importanceBias ?? 1.0, specifier: "%.1f")x")
+                Text("Priority emphasis: \(draftChart.dynamicConfiguration?.importanceBias ?? 1.0, specifier: "%.1f")x")
                 Slider(value: configurationBinding(\.importanceBias), in: 0.5...2.0, step: 0.1)
-                    .onChange(of: chart.dynamicConfiguration?.importanceBias ?? 1.0) { _, _ in regenerateEvents() }
+                    .onChange(of: draftChart.dynamicConfiguration?.importanceBias ?? 1.0) { _, _ in regenerateEvents() }
             }
 
             Toggle("Show start times in task names", isOn: configurationBinding(\.includeStartTimesInTitles))
-                .onChange(of: chart.dynamicConfiguration?.includeStartTimesInTitles ?? true) { _, _ in regenerateEvents() }
+                .onChange(of: draftChart.dynamicConfiguration?.includeStartTimesInTitles ?? true) { _, _ in regenerateEvents() }
         }
     }
 
     private var reviewStep: some View {
         WizardScrollContent {
+            Text("The whole window is accounted for. Empty gaps appear as free time. Start this routine at the planned time to follow these clock times.")
+                .padding(16)
+                .chartflowBox(fillColor: .tasqSage, strokeColor: .chartflowText, lineWidth: 1.2)
             Button {
-                chart.regenerateDynamicEvents()
+                draftChart.regenerateDynamicEvents()
             } label: {
                 Label {
                     Text("Regenerate")
@@ -223,9 +249,9 @@ struct DynamicScheduleWizardView: View {
                 }
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(DoodleButtonStyle())
 
-            ForEach(chart.events) { event in
+            ForEach(draftChart.events) { event in
                 HStack(alignment: .firstTextBaseline) {
                     Text(event.name.isEmpty ? "Task" : event.name)
                         .foregroundStyle(Color.chartflowText)
@@ -235,50 +261,51 @@ struct DynamicScheduleWizardView: View {
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)
-                .background(Color.chartflowSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .chartflowBox(cornerRadius: 15, wobble: 1, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.2)
             }
         }
     }
 
     private func taskNameBinding(at index: Int) -> Binding<String> {
         Binding {
-            chart.dynamicConfiguration?.dailyTasks[index].name ?? ""
+            draftChart.dynamicConfiguration?.dailyTasks[index].name ?? ""
         } set: { newValue in
-            guard chart.dynamicConfiguration?.dailyTasks.indices.contains(index) == true else { return }
-            chart.dynamicConfiguration?.dailyTasks[index].name = newValue
+            guard draftChart.dynamicConfiguration?.dailyTasks.indices.contains(index) == true else { return }
+            draftChart.dynamicConfiguration?.dailyTasks[index].name = newValue
         }
     }
 
     private func taskBinding(at index: Int) -> Binding<DynamicScheduleTask> {
         Binding {
-            chart.dynamicConfiguration?.dailyTasks[index] ?? DynamicScheduleTask(name: "", timeRank: 2, importanceRank: 3)
+            draftChart.dynamicConfiguration?.dailyTasks[index] ?? DynamicScheduleTask(name: "", timeRank: 2, importanceRank: 3)
         } set: { newValue in
-            guard chart.dynamicConfiguration?.dailyTasks.indices.contains(index) == true else { return }
-            chart.dynamicConfiguration?.dailyTasks[index] = newValue
+            guard draftChart.dynamicConfiguration?.dailyTasks.indices.contains(index) == true else { return }
+            draftChart.dynamicConfiguration?.dailyTasks[index] = newValue
         }
     }
 
     private func configurationBinding<Value>(_ keyPath: WritableKeyPath<DynamicScheduleConfiguration, Value>) -> Binding<Value> {
         Binding {
-            let configuration = chart.dynamicConfiguration ?? .standard
+            let configuration = draftChart.dynamicConfiguration ?? .standard
             return configuration[keyPath: keyPath]
         } set: { newValue in
-            var configuration = chart.dynamicConfiguration ?? .standard
+            var configuration = draftChart.dynamicConfiguration ?? .standard
             configuration[keyPath: keyPath] = newValue
-            chart.dynamicConfiguration = configuration
+            draftChart.dynamicConfiguration = configuration
         }
     }
 
     private func regenerateEvents() {
-        chart.regenerateDynamicEvents()
+        draftChart.regenerateDynamicEvents()
     }
 
     private func completeSetup() {
-        var configuration = chart.dynamicConfiguration ?? .standard
+        guard planIssue == nil else { return }
+        var configuration = draftChart.dynamicConfiguration ?? .standard
         configuration.setupCompleted = true
-        chart.dynamicConfiguration = configuration
-        chart.regenerateDynamicEvents()
+        draftChart.dynamicConfiguration = configuration
+        draftChart.regenerateDynamicEvents()
+        chart = draftChart
         dismiss()
     }
 }
@@ -297,7 +324,7 @@ private enum DynamicScheduleWizardStep: Int, CaseIterable, Identifiable {
         case .window: return "Pick the Time Slot"
         case .tasks: return "Add Daily Things"
         case .priorities: return "Rank and Pin"
-        case .configuration: return "Tune the Generator"
+        case .configuration: return "Make It Your Own"
         case .review: return "Review the Plan"
         }
     }
@@ -307,7 +334,7 @@ private enum DynamicScheduleWizardStep: Int, CaseIterable, Identifiable {
         case .window: return "Choose when this dynamic schedule should fit into the day."
         case .tasks: return "List the things you normally do every day."
         case .priorities: return "Rank time needed, importance, and any exact start times."
-        case .configuration: return "Adjust how strict and visible the generated plan should be."
+        case .configuration: return "Choose the shortest step and how much priorities matter."
         case .review: return "Check the tentative schedule before using it."
         }
     }
@@ -403,8 +430,7 @@ struct DynamicScheduleTaskRow: View {
             }
         }
         .padding(14)
-        .background(Color.chartflowSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .chartflowBox(cornerRadius: 18, wobble: 1.3, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.3)
         .onAppear {
             hasFixedStartTime = task.hasFixedStartTime
         }
@@ -445,7 +471,7 @@ struct DynamicTimePickerRow: View {
                     Text("\(value)").tag(value)
                 }
             }
-            .frame(width: 72)
+            .frame(maxWidth: .infinity)
             .clipped()
             .onChange(of: hour) { _, _ in onChange() }
 
@@ -454,7 +480,7 @@ struct DynamicTimePickerRow: View {
                     Text(String(format: "%02d", value)).tag(value)
                 }
             }
-            .frame(width: 82)
+            .frame(maxWidth: .infinity)
             .clipped()
             .onChange(of: minute) { _, _ in onChange() }
 
@@ -462,13 +488,12 @@ struct DynamicTimePickerRow: View {
                 Text("AM").tag(true)
                 Text("PM").tag(false)
             }
-            .frame(width: 88)
+            .frame(maxWidth: .infinity)
             .clipped()
             .onChange(of: isAM) { _, _ in onChange() }
         }
         .padding(14)
-        .background(Color.chartflowSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .chartflowBox(cornerRadius: 18, wobble: 1.3, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.3)
     }
 }
 

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 internal import Combine
@@ -8,6 +9,8 @@ final class UserProgressStore: ObservableObject {
     @Published var charts: [Chart] = []
     @Published var hasSeenOnboarding = false
     @Published var defaultZoom = 1.3
+    @Published var accountSetupVersion = 0
+    @Published var birthday = Calendar.current.date(byAdding: .year, value: -13, to: .now) ?? .now
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -113,11 +116,25 @@ final class UserProgressStore: ObservableObject {
         flushPendingSave()
     }
 
+    var needsAccountSetup: Bool {
+        accountSetupVersion < TasqAccountSetup.currentVersion
+    }
+
+    func completeAccountSetup(birthday: Date, defaultZoom: Double, appearanceMode: TasqAppearanceMode) {
+        self.birthday = Calendar.current.startOfDay(for: birthday)
+        self.defaultZoom = defaultZoom
+        accountSetupVersion = TasqAccountSetup.currentVersion
+        appearanceMode.save()
+        scheduleSave()
+    }
+
     private var currentState: UserProgressState {
         UserProgressState(
             charts: charts,
             hasSeenOnboarding: hasSeenOnboarding,
             defaultZoom: defaultZoom,
+            accountSetupVersion: accountSetupVersion,
+            birthday: birthday,
             preferences: UserProgressPreferences.current
         )
     }
@@ -193,6 +210,10 @@ final class UserProgressStore: ObservableObject {
 
         hasSeenOnboarding = data["hasSeenOnboarding"] as? Bool ?? false
         defaultZoom = data["defaultZoom"] as? Double ?? 1.3
+        accountSetupVersion = data["accountSetupVersion"] as? Int ?? 0
+        birthday = (data["birthday"] as? Timestamp)?.dateValue()
+            ?? Calendar.current.date(byAdding: .year, value: -13, to: .now)
+            ?? .now
 
         if let preferencesValue = data["preferences"] as? String,
            let preferencesData = Data(base64Encoded: preferencesValue),
@@ -206,6 +227,8 @@ final class UserProgressStore: ObservableObject {
             charts: charts,
             hasSeenOnboarding: hasSeenOnboarding,
             defaultZoom: defaultZoom,
+            accountSetupVersion: accountSetupVersion,
+            birthday: birthday,
             preferences: UserProgressPreferences.current
         )
     }
@@ -218,6 +241,8 @@ final class UserProgressStore: ObservableObject {
                 "charts": encodedCharts,
                 "hasSeenOnboarding": state.hasSeenOnboarding,
                 "defaultZoom": state.defaultZoom,
+                "accountSetupVersion": state.accountSetupVersion,
+                "birthday": Timestamp(date: state.birthday),
                 "preferences": encodedPreferences,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
@@ -242,11 +267,15 @@ final class UserProgressStore: ObservableObject {
         charts = []
         hasSeenOnboarding = false
         defaultZoom = 1.3
+        accountSetupVersion = 0
+        birthday = Calendar.current.date(byAdding: .year, value: -13, to: .now) ?? .now
         applyPreferences(.defaults)
         lastSavedState = UserProgressState(
             charts: charts,
             hasSeenOnboarding: hasSeenOnboarding,
             defaultZoom: defaultZoom,
+            accountSetupVersion: accountSetupVersion,
+            birthday: birthday,
             preferences: UserProgressPreferences.current
         )
     }
@@ -262,11 +291,78 @@ private struct UserProgressState: Equatable {
     var charts: [Chart]
     var hasSeenOnboarding: Bool
     var defaultZoom: Double
+    var accountSetupVersion: Int
+    var birthday: Date
     var preferences: UserProgressPreferences
+}
+
+enum TasqAccountSetup {
+    static let currentVersion = 1
+}
+
+enum TasqAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "Auto"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    static func load() -> TasqAppearanceMode {
+        let defaults = UserDefaults.standard
+        if let rawValue = defaults.string(forKey: "appearanceMode"),
+           let mode = TasqAppearanceMode(rawValue: rawValue) {
+            return mode
+        }
+
+        return defaults.bool(forKey: "darkModeEnabled") ? .dark : .system
+    }
+
+    func save() {
+        let defaults = UserDefaults.standard
+        defaults.set(rawValue, forKey: "appearanceMode")
+        defaults.set(self == .dark, forKey: "darkModeEnabled")
+    }
+}
+
+private struct InterfaceScaleKey: EnvironmentKey {
+    static let defaultValue = 1.0
+}
+
+extension EnvironmentValues {
+    var interfaceScale: Double {
+        get { self[InterfaceScaleKey.self] }
+        set { self[InterfaceScaleKey.self] = newValue }
+    }
 }
 
 private struct UserProgressPreferences: Codable, Equatable {
     var darkModeEnabled: Bool
+    var appearanceMode: String
+    var interfaceScale: Double
     var boxMovementEffect: String
     var backgroundPattern: String
     var reduceBoxMotion: Bool
@@ -287,8 +383,35 @@ private struct UserProgressPreferences: Codable, Equatable {
     var friendAvatarHairBrightness: Double
     var friendAvatarScarfHue: Double
 
+    enum CodingKeys: String, CodingKey {
+        case darkModeEnabled
+        case appearanceMode
+        case interfaceScale
+        case boxMovementEffect
+        case backgroundPattern
+        case reduceBoxMotion
+        case highContrastBoxes
+        case largerText
+        case boldText
+        case calmCelebrations
+        case friendAvatarX
+        case friendAvatarY
+        case friendAvatarBodyColor
+        case friendAvatarMouth
+        case friendAvatarEyes
+        case friendAvatarHair
+        case friendAvatarFur
+        case friendAvatarItem
+        case friendAvatarHairHue
+        case friendAvatarHairSaturation
+        case friendAvatarHairBrightness
+        case friendAvatarScarfHue
+    }
+
     static let defaults = UserProgressPreferences(
         darkModeEnabled: false,
+        appearanceMode: TasqAppearanceMode.system.rawValue,
+        interfaceScale: 1.0,
         boxMovementEffect: BoxMovementEffect.doodle.rawValue,
         backgroundPattern: TasqBackgroundPattern.dots.rawValue,
         reduceBoxMotion: false,
@@ -310,10 +433,88 @@ private struct UserProgressPreferences: Codable, Equatable {
         friendAvatarScarfHue: 0.78
     )
 
+    init(
+        darkModeEnabled: Bool,
+        appearanceMode: String,
+        interfaceScale: Double,
+        boxMovementEffect: String,
+        backgroundPattern: String,
+        reduceBoxMotion: Bool,
+        highContrastBoxes: Bool,
+        largerText: Bool,
+        boldText: Bool,
+        calmCelebrations: Bool,
+        friendAvatarX: Double,
+        friendAvatarY: Double,
+        friendAvatarBodyColor: String,
+        friendAvatarMouth: String,
+        friendAvatarEyes: String,
+        friendAvatarHair: String,
+        friendAvatarFur: String,
+        friendAvatarItem: String,
+        friendAvatarHairHue: Double,
+        friendAvatarHairSaturation: Double,
+        friendAvatarHairBrightness: Double,
+        friendAvatarScarfHue: Double
+    ) {
+        self.darkModeEnabled = darkModeEnabled
+        self.appearanceMode = appearanceMode
+        self.interfaceScale = interfaceScale
+        self.boxMovementEffect = boxMovementEffect
+        self.backgroundPattern = backgroundPattern
+        self.reduceBoxMotion = reduceBoxMotion
+        self.highContrastBoxes = highContrastBoxes
+        self.largerText = largerText
+        self.boldText = boldText
+        self.calmCelebrations = calmCelebrations
+        self.friendAvatarX = friendAvatarX
+        self.friendAvatarY = friendAvatarY
+        self.friendAvatarBodyColor = friendAvatarBodyColor
+        self.friendAvatarMouth = friendAvatarMouth
+        self.friendAvatarEyes = friendAvatarEyes
+        self.friendAvatarHair = friendAvatarHair
+        self.friendAvatarFur = friendAvatarFur
+        self.friendAvatarItem = friendAvatarItem
+        self.friendAvatarHairHue = friendAvatarHairHue
+        self.friendAvatarHairSaturation = friendAvatarHairSaturation
+        self.friendAvatarHairBrightness = friendAvatarHairBrightness
+        self.friendAvatarScarfHue = friendAvatarScarfHue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = Self.defaults
+        darkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .darkModeEnabled) ?? defaults.darkModeEnabled
+        appearanceMode = try container.decodeIfPresent(String.self, forKey: .appearanceMode)
+            ?? (darkModeEnabled ? TasqAppearanceMode.dark.rawValue : defaults.appearanceMode)
+        interfaceScale = try container.decodeIfPresent(Double.self, forKey: .interfaceScale) ?? defaults.interfaceScale
+        boxMovementEffect = try container.decodeIfPresent(String.self, forKey: .boxMovementEffect) ?? defaults.boxMovementEffect
+        backgroundPattern = try container.decodeIfPresent(String.self, forKey: .backgroundPattern) ?? defaults.backgroundPattern
+        reduceBoxMotion = try container.decodeIfPresent(Bool.self, forKey: .reduceBoxMotion) ?? defaults.reduceBoxMotion
+        highContrastBoxes = try container.decodeIfPresent(Bool.self, forKey: .highContrastBoxes) ?? defaults.highContrastBoxes
+        largerText = try container.decodeIfPresent(Bool.self, forKey: .largerText) ?? defaults.largerText
+        boldText = try container.decodeIfPresent(Bool.self, forKey: .boldText) ?? defaults.boldText
+        calmCelebrations = try container.decodeIfPresent(Bool.self, forKey: .calmCelebrations) ?? defaults.calmCelebrations
+        friendAvatarX = try container.decodeIfPresent(Double.self, forKey: .friendAvatarX) ?? defaults.friendAvatarX
+        friendAvatarY = try container.decodeIfPresent(Double.self, forKey: .friendAvatarY) ?? defaults.friendAvatarY
+        friendAvatarBodyColor = try container.decodeIfPresent(String.self, forKey: .friendAvatarBodyColor) ?? defaults.friendAvatarBodyColor
+        friendAvatarMouth = try container.decodeIfPresent(String.self, forKey: .friendAvatarMouth) ?? defaults.friendAvatarMouth
+        friendAvatarEyes = try container.decodeIfPresent(String.self, forKey: .friendAvatarEyes) ?? defaults.friendAvatarEyes
+        friendAvatarHair = try container.decodeIfPresent(String.self, forKey: .friendAvatarHair) ?? defaults.friendAvatarHair
+        friendAvatarFur = try container.decodeIfPresent(String.self, forKey: .friendAvatarFur) ?? defaults.friendAvatarFur
+        friendAvatarItem = try container.decodeIfPresent(String.self, forKey: .friendAvatarItem) ?? defaults.friendAvatarItem
+        friendAvatarHairHue = try container.decodeIfPresent(Double.self, forKey: .friendAvatarHairHue) ?? defaults.friendAvatarHairHue
+        friendAvatarHairSaturation = try container.decodeIfPresent(Double.self, forKey: .friendAvatarHairSaturation) ?? defaults.friendAvatarHairSaturation
+        friendAvatarHairBrightness = try container.decodeIfPresent(Double.self, forKey: .friendAvatarHairBrightness) ?? defaults.friendAvatarHairBrightness
+        friendAvatarScarfHue = try container.decodeIfPresent(Double.self, forKey: .friendAvatarScarfHue) ?? defaults.friendAvatarScarfHue
+    }
+
     static var current: UserProgressPreferences {
         let defaults = UserDefaults.standard
         return UserProgressPreferences(
             darkModeEnabled: defaults.bool(forKey: "darkModeEnabled"),
+            appearanceMode: defaults.string(forKey: "appearanceMode") ?? TasqAppearanceMode.load().rawValue,
+            interfaceScale: defaults.object(forKey: "interfaceScale") as? Double ?? Self.defaults.interfaceScale,
             boxMovementEffect: defaults.string(forKey: "boxMovementEffect") ?? Self.defaults.boxMovementEffect,
             backgroundPattern: defaults.string(forKey: "backgroundPattern") ?? Self.defaults.backgroundPattern,
             reduceBoxMotion: defaults.bool(forKey: "reduceBoxMotion"),
@@ -339,6 +540,8 @@ private struct UserProgressPreferences: Codable, Equatable {
     func save() {
         let defaults = UserDefaults.standard
         defaults.set(darkModeEnabled, forKey: "darkModeEnabled")
+        defaults.set(appearanceMode, forKey: "appearanceMode")
+        defaults.set(interfaceScale, forKey: "interfaceScale")
         defaults.set(boxMovementEffect, forKey: "boxMovementEffect")
         defaults.set(backgroundPattern, forKey: "backgroundPattern")
         defaults.set(reduceBoxMotion, forKey: "reduceBoxMotion")

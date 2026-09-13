@@ -7,43 +7,22 @@ import SwiftUI
 import UserNotifications
 internal import Combine
 
-struct ActiveRoutineSnapshot: Codable {
-    var chartID: UUID
-    var currentEventIndex: Int
-    var secondsRemaining: Int
-    var routineStartDate: Date?
-    var isPaused: Bool
-} // Miller kids built different
-
-class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, ObservableObject {
-    @Published var shouldStartTimer = false
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        if response.notification.request.identifier == "alarm" {
-            DispatchQueue.main.async {
-                self.shouldStartTimer = true
-            }
-        }
-        completionHandler()
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound])
-    }
-}
-
 struct ChartEditorView: View {
     @Binding var chart: Chart
     let defaultZoom: Double
+    var startImmediately = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var progressStore: UserProgressStore
-    @StateObject private var notificationDelegate = NotificationDelegate()
+    @ObservedObject private var notifications = TasqNotificationRouter.shared
+    @State private var showFlowDuringRun = false
+    @State private var showCompletion = false
+    @State private var showStopConfirmation = false
+    @State private var hasPrepared = false
+    @State private var notificationsUnavailable = false
     @State private var zoomScale: CGFloat = 1.3
     @State private var isEditingAll = false
     @State private var isEditingTitle = false
-    @State private var showSideMenu = false
-    @State private var optionSelected = false
     @State private var showAlarmPicker = false
     @State private var showDynamicSetupWizard = false
     @State private var alarmHour = 7
@@ -71,16 +50,22 @@ struct ChartEditorView: View {
     }
 
     func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
-        UNUserNotificationCenter.current().delegate = notificationDelegate
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async { notificationsUnavailable = !granted }
+        }
+    }
+
+    private func notificationID(_ kind: String) -> String {
+        TasqNotificationRouter.identifier(chartID: chart.id, kind: kind)
     }
 
     private var routineNotificationIdentifiers: [String] {
-        chart.events.indices.map { "task-\($0)" } + ["routine-complete", "routine-complete-now"]
+        chart.events.indices.map { notificationID("task-\($0)") }
+            + [notificationID("complete"), notificationID("complete-now")]
     }
 
     private var activeRoutineSnapshotKey: String {
-        "activeRoutineSnapshot-\(chart.id.uuidString)"
+        ActiveRoutineSnapshot.key(for: chart.id)
     }
 
     func scheduleNotifications(from startIndex: Int = 0, currentTaskRemaining: Int? = nil) {
@@ -99,7 +84,7 @@ struct ChartEditorView: View {
             delay += TimeInterval(event.durationSeconds)
         }
 
-        scheduleRoutineCompleteNotification(after: max(1, delay), identifier: "routine-complete")
+        scheduleRoutineCompleteNotification(after: max(1, delay), identifier: notificationID("complete"))
     }
 
     func scheduleTaskNotification(for index: Int, after delay: TimeInterval, isFirstVisibleTask: Bool) {
@@ -107,46 +92,31 @@ struct ChartEditorView: View {
         let event = chart.events[index]
         let content = UNMutableNotificationContent()
         content.title = "Tasq"
+        content.userInfo = ["chartID": chart.id.uuidString, "kind": "task"]
         content.body = isFirstVisibleTask
             ? "Starting: \(event.name.isEmpty ? "Task \(index + 1)" : event.name)"
             : "Time for: \(event.name.isEmpty ? "Task \(index + 1)" : event.name)"
         content.sound = UNNotificationSound(named: UNNotificationSoundName("alarm_loop.caf"))
         content.interruptionLevel = .timeSensitive
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, delay), repeats: false)
-        let request = UNNotificationRequest(identifier: "task-\(index)", content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: notificationID("task-\(index)"), content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request)
     }
 
-    func scheduleRoutineCompleteNotification(after delay: TimeInterval = 1, identifier: String = "routine-complete-now") {
+    func scheduleRoutineCompleteNotification(after delay: TimeInterval = 1, identifier: String? = nil) {
         let content = UNMutableNotificationContent()
         content.title = "Tasq"
+        content.userInfo = ["chartID": chart.id.uuidString, "kind": "complete"]
         content.body = "All tasks complete in \(chart.name)."
         content.sound = .default
         content.interruptionLevel = .timeSensitive
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, delay), repeats: false)
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: identifier ?? notificationID("complete-now"), content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request)
     }
 
     func scheduleAlarmNotification() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["alarm"])
-        guard chart.alarmEnabled,
-              let hour = chart.alarmHour,
-              let minute = chart.alarmMinute else { return }
-        var h = hour
-        if !chart.alarmIsAM && h != 12 { h += 12 }
-        if chart.alarmIsAM && h == 12 { h = 0 }
-        var components = DateComponents()
-        components.hour = h
-        components.minute = minute
-        let content = UNMutableNotificationContent()
-        content.title = "Tasq"
-        content.body = "Time to start \(chart.name)!"
-        content.sound = UNNotificationSound(named: UNNotificationSoundName("alarm_loop.caf"))
-        content.interruptionLevel = .timeSensitive
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-        let request = UNNotificationRequest(identifier: "alarm", content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
+        TasqNotificationRouter.scheduleAlarm(for: chart)
     }
 
     func scheduleTimer() {
@@ -160,10 +130,16 @@ struct ChartEditorView: View {
     }
 
     func startTimer() {
+        guard !chart.events.isEmpty else { return }
+        requestNotificationPermission()
+        showCompletion = false
+        showFlowDuringRun = false
         for i in chart.events.indices {
             chart.events[i].isCompleted = false
+            chart.events[i].isMissed = false
             for j in chart.events[i].subtasks.indices {
                 chart.events[i].subtasks[j].isCompleted = false
+                chart.events[i].subtasks[j].isMissed = false
             }
         }
         currentEventIndex = 0
@@ -198,6 +174,7 @@ struct ChartEditorView: View {
     func pauseTimer() {
         guard isRunning, !isPaused else { return }
         synchronizeTimerWithCurrentDate()
+        guard isRunning else { return }
         timer?.invalidate()
         timer = nil
         isPaused = true
@@ -230,7 +207,7 @@ struct ChartEditorView: View {
             routineStartDate = startDate.addingTimeInterval(-TimeInterval(durationBeforeEvent(at: nextIndex)))
             secondsRemaining = chart.events[nextIndex].durationMinutes * 60
             haptic.impactOccurred()
-            scheduleNotifications(from: nextIndex)
+            if !isPaused { scheduleNotifications(from: nextIndex) }
             saveActiveRoutineSnapshot()
             scheduleTimer()
         } else {
@@ -240,30 +217,19 @@ struct ChartEditorView: View {
 
     func synchronizeTimerWithCurrentDate(sendCompletionNotification: Bool = false) {
         guard isRunning, !isPaused, let routineStartDate else { return }
-
         let elapsed = max(0, Int(Date().timeIntervalSince(routineStartDate)))
-        var elapsedBeforeEvent = 0
-
-        for index in chart.events.indices {
-            let eventEnd = elapsedBeforeEvent + chart.events[index].durationSeconds
-
-            if elapsed >= eventEnd {
-                chart.events[index].isCompleted = true
-                elapsedBeforeEvent = eventEnd
-                continue
-            }
-
-            if currentEventIndex != index {
-                haptic.impactOccurred()
-            }
-            currentEventIndex = index
-            taskStartDate = routineStartDate.addingTimeInterval(TimeInterval(elapsedBeforeEvent))
-            secondsRemaining = max(0, eventEnd - elapsed)
-            saveActiveRoutineSnapshot()
+        guard let position = RoutineClock.position(events: chart.events, elapsed: elapsed) else {
+            completeRoutine(sendNotification: sendCompletionNotification)
             return
         }
-
-        completeRoutine(sendNotification: sendCompletionNotification)
+        for index in chart.events.indices where index < position.index {
+            chart.events[index].isCompleted = true
+        }
+        if currentEventIndex != position.index { haptic.impactOccurred() }
+        currentEventIndex = position.index
+        taskStartDate = routineStartDate.addingTimeInterval(TimeInterval(position.elapsedBeforeTask))
+        secondsRemaining = position.secondsRemaining
+        saveActiveRoutineSnapshot()
     }
 
     func completeRoutine(sendNotification: Bool) {
@@ -282,6 +248,8 @@ struct ChartEditorView: View {
             }
         }
         stopTimer()
+        showCompletion = true
+        progressStore.commitSave()
         if sendNotification {
             scheduleRoutineCompleteNotification()
         }
@@ -333,6 +301,7 @@ struct ChartEditorView: View {
         } else {
             synchronizeTimerWithCurrentDate()
             if isRunning {
+                scheduleNotifications(from: currentEventIndex, currentTaskRemaining: secondsRemaining)
                 scheduleTimer()
             }
         }
@@ -447,6 +416,7 @@ struct ChartEditorView: View {
                 haptic.impactOccurred()
             },
             onComplete: {
+                guard isRunning, currentEventIndex == index else { return }
                 advanceToNext()
             },
             layoutDirection: chart.layoutDirection
@@ -454,457 +424,364 @@ struct ChartEditorView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        withAnimation {
-                            showSideMenu.toggle()
-                        }
-                        haptic.impactOccurred()
-                    } label: {
-                        TasqIcon("line.3.horizontal", size: 22)
-                            .foregroundStyle(Color.chartflowText)
-                    }
-                    .padding(.leading, 20)
-                    Spacer()
-                }
-                .padding(.top, 12)
-
-                HStack(spacing: 8) {
-                    if isEditingTitle {
-                        TextField("Chart Name", text: $chart.name, onCommit: {
-                            if chart.name.trimmingCharacters(in: .whitespaces).isEmpty {
-                                chart.name = "Untitled Routine"
-                            }
-                            isEditingTitle = false
-                        })
-                        .font(.custom("ChartflowHand-Regular", size: 34))
-                        .fontWeight(boldText ? .black : .bold)
-                        .foregroundStyle(Color.chartflowText)
-                        .textFieldStyle(.plain)
-                    } else {
-                        Text(chart.name)
-                            .font(.custom("ChartflowHand-Regular", size: 34))
-                            .fontWeight(boldText ? .black : .bold)
-                            .foregroundStyle(Color.chartflowText)
-                    }
-
-                    Button {
-                        if isEditingTitle {
-                            if chart.name.trimmingCharacters(in: .whitespaces).isEmpty {
-                                chart.name = "Untitled Routine"
-                            }
-                        }
-                        isEditingTitle.toggle()
-                        haptic.impactOccurred()
-                    } label: {
-                        TasqIcon(isEditingTitle ? "checkmark.circle" : "pencil.circle", size: 20)
-                            .foregroundStyle(Color.chartflowSecondaryText)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-
-                if chart.scheduleType == .dynamic {
-                    Button {
-                        showDynamicSetupWizard = true
-                        haptic.impactOccurred()
-                    } label: {
-                        Label {
-                            Text("Dynamic Setup")
-                        } icon: {
-                            TasqIcon("wand.and.stars", size: 17)
-                        }
-                            .font(.custom("ChartflowHand-Regular", size: 17))
-                            .fontWeight(boldText ? .bold : .regular)
-                            .foregroundStyle(isRunning ? Color.gray.opacity(0.5) : Color.chartflowText)
+        VStack(spacing: 0) {
+            editorHeader
+            if showCompletion {
+                completionContent
+            } else if isRunning && !showFlowDuringRun {
+                focusContent
+            } else {
+                if chart.scheduleType == .dynamic && !isRunning {
+                    Button { showDynamicSetupWizard = true } label: {
+                        Label("Adjust my dynamic plan", systemImage: "wand.and.stars")
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .chartflowBox(cornerRadius: 12, wobble: 1.5, fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.5)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isRunning)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
+                    .buttonStyle(DoodleButtonStyle(tint: .tasqLilac))
+                    .padding(.horizontal, 20).padding(.bottom, 12)
                 }
-
-                GeometryReader { geometry in
-                    ScrollView([.vertical, .horizontal]) {
-                        chartFlowContent
-                            .padding(.horizontal, flowHorizontalPadding)
-                            .padding(.vertical, flowVerticalPadding)
-                            .scaleEffect(zoomScale)
-                            .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
+                if chart.events.isEmpty {
+                    VStack(spacing: 18) {
+                        Text("Let's give your day a little shape.")
+                            .doodleFont(26, relativeTo: .title2)
+                        Button("Set up my plan") { showDynamicSetupWizard = true }
+                            .buttonStyle(DoodleButtonStyle(prominent: true))
+                    }
+                    .padding(25).frame(maxHeight: .infinity)
+                } else {
+                    GeometryReader { geometry in
+                        ScrollView([.vertical, .horizontal]) {
+                            chartFlowContent
+                                .padding(.horizontal, flowHorizontalPadding)
+                                .padding(.vertical, flowVerticalPadding)
+                                .scaleEffect(zoomScale)
+                                .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PolkaDotBackground())
             }
-            .background(Color.chartflowBackground.ignoresSafeArea())
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            // Confetti overlay
+        }
+        .foregroundStyle(Color.chartflowText)
+        .background(PolkaDotBackground().ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !showCompletion { routineControls }
+        }
+        .overlay {
             if showConfetti {
-                ConfettiView()
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-
-                VStack {
-                    Spacer()
-                    Text("🎉 Routine Complete!")
-                        .font(.custom("ChartflowHand-Regular", size: 28))
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.chartflowText)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.chartflowSurface)
-                                .shadow(color: .black.opacity(0.15), radius: 10)
-                        )
-                    Spacer()
-                }
-                .transition(.scale.combined(with: .opacity))
+                ConfettiView().ignoresSafeArea().allowsHitTesting(false)
             }
-
-            // Bottom bar
-            VStack(spacing: 0) {
-                if isRunning {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(currentEvent?.name.isEmpty == false ? currentEvent!.name : "Task \(currentEventIndex + 1)")
-                                .font(.custom("ChartflowHand-Regular", size: 18))
-                                .fontWeight(boldText ? .bold : .regular)
-                                .foregroundStyle(Color.chartflowText)
-                                .lineLimit(1)
-                            Text("Task \(currentEventIndex + 1) of \(chart.events.count)")
-                                .font(.custom("ChartflowHand-Regular", size: 13))
-                                .fontWeight(boldText ? .semibold : .regular)
-                                .foregroundStyle(Color.chartflowSecondaryText)
-                            if isPaused {
-                                Text("Paused")
-                                    .font(.custom("ChartflowHand-Regular", size: 13))
-                                    .foregroundStyle(Color.chartflowSecondaryText)
-                            }
-                        }
-                        Spacer()
-                        Text(formattedTime(secondsRemaining))
-                            .font(.custom("ChartflowHand-Regular", size: 32))
-                            .fontWeight(boldText ? .black : .regular)
-                            .foregroundStyle(Color.chartflowText)
-                            .monospacedDigit()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.chartflowSurface)
-                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -4)
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-
-                // Zoom controls
-                HStack(spacing: 20) {
-                    Button {
-                        withAnimation { zoomScale = max(0.5, zoomScale - 0.1) }
-                        haptic.impactOccurred()
-                    } label: {
-                        TasqIcon("minus.magnifyingglass", size: 20)
-                    }
-
-                    Text("\(Int(zoomScale * 100))%")
-                        .font(.custom("ChartflowHand-Regular", size: 16))
-                        .frame(width: 50)
-
-                    Button {
-                        withAnimation { zoomScale = min(2.0, zoomScale + 0.1) }
-                        haptic.impactOccurred()
-                    } label: {
-                        TasqIcon("plus.magnifyingglass", size: 20)
-                    }
-                }
-                .padding(.top, 12)
-                .foregroundStyle(Color.chartflowText)
-
-                HStack {
-                    Button {
-                        if !isRunning {
-                            isEditingAll.toggle()
-                            haptic.impactOccurred()
-                        }
-                    } label: {
-                        TasqIcon(isEditingAll ? "checkmark.circle.fill" : "pencil.circle.fill", size: 44)
-                            .foregroundStyle(isRunning ? Color.gray.opacity(0.4) : (isEditingAll ? Color.blue : Color.chartflowText))
-                            .background(Color.chartflowSurface)
-                            .clipShape(Circle())
-                    }
-                    .disabled(isRunning)
-                    .padding(.leading, 20)
-
-                    Spacer()
-
-                    if isRunning {
-                        Button {
-                            withAnimation {
-                                if isPaused {
-                                    resumeTimer()
-                                } else {
-                                    pauseTimer()
-                                }
-                            }
-                            haptic.impactOccurred()
-                        } label: {
-                            TasqIcon(isPaused ? "playpause.circle.fill" : "pause.circle.fill", size: 44)
-                                .foregroundStyle(Color.chartflowText)
-                                .background(Color.chartflowSurface)
-                                .clipShape(Circle())
-                        }
-                        .accessibilityLabel(isPaused ? "Resume Routine" : "Pause Routine")
-
-                        Spacer()
-                    }
-
-                    Button {
-                        withAnimation {
-                            if isRunning {
-                                stopTimer()
-                            } else {
-                                isEditingAll = false
-                                startTimer()
-                            }
-                        }
-                        haptic.impactOccurred()
-                    } label: {
-                        TasqIcon(isRunning ? "stop.circle.fill" : "play.circle.fill", size: 44)
-                            .foregroundStyle(Color.chartflowText)
-                            .background(Color.chartflowSurface)
-                            .clipShape(Circle())
-                    }
-                    .padding(.trailing, 20)
-                }
-                .padding(.bottom, 16)
-                .padding(.top, 8)
-            }
-            .background(Color.chartflowSurface)
-            .frame(maxWidth: .infinity)
-
-            // Dimmed background when side menu is open
-            if showSideMenu {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation { showSideMenu = false }
-                        haptic.impactOccurred()
-                    }
-                    .animation(.easeInOut(duration: 0.25), value: showSideMenu)
-            }
-
-            // Side menu
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Spacer().frame(height: 80)
-
-                    Text("Home")
-                        .font(.custom("ChartflowHand-Regular", size: 24))
-                        .foregroundStyle(Color.chartflowText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
-                        .background(optionSelected ? Color.gray.opacity(0.3) : Color.clear)
-                        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { isPressing in
-                            optionSelected = isPressing
-                        }, perform: {
-                            haptic.impactOccurred()
-                            dismiss()
-                        })
-
-                    Divider()
-                        .padding(.horizontal, 20)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Layout")
-                            .font(.custom("ChartflowHand-Regular", size: 24))
-                            .foregroundStyle(Color.chartflowText)
-
-                        Picker("Layout", selection: $chart.layoutDirection) {
-                            Text("Left to Right").tag(ChartLayoutDirection.leftToRight)
-                            Text("Top to Bottom").tag(ChartLayoutDirection.topToBottom)
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: chart.layoutDirection) { _, _ in
-                            haptic.impactOccurred()
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-
-                    Divider()
-                        .padding(.horizontal, 20)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Alarm Block")
-                                .font(.custom("ChartflowHand-Regular", size: 24))
-                                .foregroundStyle(Color.chartflowText)
-                            Spacer()
-                            Toggle("", isOn: $chart.alarmEnabled)
-                                .labelsHidden()
-                                .onChange(of: chart.alarmEnabled) { _, enabled in
-                                    haptic.impactOccurred()
-                                    if enabled {
-                                        if chart.alarmHour == nil {
-                                            chart.alarmHour = 7
-                                            chart.alarmMinute = 0
-                                            chart.alarmIsAM = true
-                                            alarmHour = 7
-                                            alarmMinute = 0
-                                            alarmIsAM = true
-                                        }
-                                        showAlarmPicker = true
-                                    } else {
-                                        UNUserNotificationCenter.current()
-                                            .removePendingNotificationRequests(withIdentifiers: ["alarm"])
-                                    }
-                                }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-
-                        if chart.alarmEnabled {
-                            Button {
-                                alarmHour = chart.alarmHour ?? 7
-                                alarmMinute = chart.alarmMinute ?? 0
-                                alarmIsAM = chart.alarmIsAM
-                                showAlarmPicker = true
-                                haptic.impactOccurred()
-                            } label: {
-                                Text(formattedAlarm())
-                                    .font(.custom("ChartflowHand-Regular", size: 18))
-                                    .foregroundStyle(Color.chartflowSecondaryText)
-                                    .padding(.horizontal, 20)
-                            }
-                        }
-                    }
-
-                    Spacer()
-                }
-                .frame(width: 240)
-                .background(Color.chartflowSurface)
-                .ignoresSafeArea()
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .offset(x: showSideMenu ? 0 : -260)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            chart.ensureDynamicConfiguration()
-            if chart.scheduleType == .dynamic && chart.dynamicConfiguration?.setupCompleted == false {
-                showDynamicSetupWizard = true
+            if !hasPrepared {
+                hasPrepared = true
+                chart.ensureDynamicConfiguration()
+                zoomScale = CGFloat(defaultZoom)
+                let hadSnapshot = ActiveRoutineSnapshot.load(chartID: chart.id) != nil
+                restoreActiveRoutineSnapshot()
+                if chart.scheduleType == .dynamic && chart.dynamicConfiguration?.setupCompleted == false {
+                    showDynamicSetupWizard = true
+                } else if startImmediately && !hadSnapshot {
+                    startTimer()
+                }
+                if notifications.requestedChartID == chart.id { notifications.requestedChartID = nil }
+            } else if isRunning && !isPaused {
+                synchronizeTimerWithCurrentDate()
+                if isRunning { scheduleTimer() }
             }
-            zoomScale = CGFloat(defaultZoom)
-            requestNotificationPermission()
-            UNUserNotificationCenter.current().delegate = notificationDelegate
-            restoreActiveRoutineSnapshot()
-            if let h = chart.alarmHour {
-                alarmHour = h
-                alarmMinute = chart.alarmMinute ?? 0
-                alarmIsAM = chart.alarmIsAM
-            }
+            alarmHour = chart.alarmHour ?? 7
+            alarmMinute = chart.alarmMinute ?? 0
+            alarmIsAM = chart.alarmIsAM
         }
         .onDisappear {
             saveActiveRoutineSnapshot()
+            timer?.invalidate()
+            timer = nil
             progressStore.commitSave()
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active && isRunning && !isPaused {
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active && isRunning && !isPaused {
                 synchronizeTimerWithCurrentDate()
+                if isRunning { scheduleTimer() }
+            } else if phase != .active {
+                saveActiveRoutineSnapshot()
+                timer?.invalidate()
+                timer = nil
+            }
+        }
+        .onChange(of: notifications.requestedChartID) { _, id in
+            guard id == chart.id else { return }
+            if notifications.startsRoutine && !isRunning { startTimer() }
+            notifications.requestedChartID = nil
+        }
+        .confirmationDialog("Stop this routine?", isPresented: $showStopConfirmation, titleVisibility: .visible) {
+            Button("Stop routine", role: .destructive) { stopTimer() }
+            Button("Keep going", role: .cancel) { }
+        } message: { Text("You can pause it instead and come back whenever you're ready.") }
+        .sheet(isPresented: $showDynamicSetupWizard) { DynamicScheduleWizardView(chart: $chart) }
+        .sheet(isPresented: $showAlarmPicker) { alarmPicker }
+    }
+
+    private var editorHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button { dismiss() } label: {
+                    HStack(spacing: 7) {
+                        TasqIcon("chevron.left", size: 15)
+                        Text("Tasq")
+                    }.frame(minHeight: 44)
+                }
+                .accessibilityLabel("Back to Tasq")
+                .accessibilityHint(isRunning ? "Your routine keeps its progress." : "")
+                Spacer()
                 if isRunning {
-                    scheduleTimer()
+                    Button { showFlowDuringRun.toggle() } label: {
+                        Text(showFlowDuringRun ? "Focus view" : "See my plan")
+                            .frame(minHeight: 44)
+                    }
+                } else {
+                    Menu {
+                        Picker("Layout", selection: $chart.layoutDirection) {
+                            Text("Across the page").tag(ChartLayoutDirection.leftToRight)
+                            Text("Down the page").tag(ChartLayoutDirection.topToBottom)
+                        }
+                        Button(chart.alarmEnabled ? "Change reminder" : "Add a reminder", systemImage: "alarm") {
+                            showAlarmPicker = true
+                        }
+                        if chart.alarmEnabled {
+                            Button("Turn off reminder", systemImage: "bell.slash") {
+                                chart.alarmEnabled = false
+                                scheduleAlarmNotification()
+                            }
+                        }
+                    } label: { TasqIcon("ellipsis", size: 22).frame(width: 44, height: 44) }
+                    .accessibilityLabel("Routine settings")
+                }
+            }
+            .doodleFont(18, relativeTo: .body)
+            if isEditingTitle && !isRunning {
+                TextField("Routine name", text: $chart.name)
+                    .doodleFont(30, relativeTo: .title).bold()
+                    .submitLabel(.done)
+                    .onSubmit { finishRenaming() }
+            } else {
+                HStack(spacing: 10) {
+                    Text(chart.name).doodleFont(30, relativeTo: .title).bold()
+                    if !isRunning && !showCompletion {
+                        Button { isEditingTitle = true } label: {
+                            TasqIcon("pencil", size: 17).frame(width: 44, height: 44)
+                        }.accessibilityLabel("Rename routine")
+                    }
+                }
+            }
+            if !isRunning && !showCompletion && chart.alarmEnabled {
+                Text(notificationsUnavailable ? "Notifications are off in iOS Settings." : "Daily nudge · \(formattedAlarm())")
+                    .doodleFont(16, relativeTo: .caption)
+                    .foregroundStyle(Color.chartflowSecondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 22).padding(.bottom, 12)
+        .background(Color.chartflowBackground)
+    }
+
+    private var focusContent: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                DoodleBadge(title: isPaused ? "A LITTLE BREATHER" : "JUST THIS ONE THING")
+                VStack(spacing: 18) {
+                    Text("Step \(currentEventIndex + 1) of \(chart.events.count)")
+                        .doodleFont(18, relativeTo: .subheadline)
+                    Text(currentEvent?.name.isEmpty == false ? currentEvent!.name : "Task \(currentEventIndex + 1)")
+                        .doodleFont(34, relativeTo: .title).bold()
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(formattedTime(secondsRemaining))
+                        .doodleFont(68, relativeTo: .largeTitle)
+                        .monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                        .accessibilityLabel("\(secondsRemaining / 60) minutes, \(secondsRemaining % 60) seconds remaining")
+                    Text(isPaused ? "Paused. Take the time you need." : "One small step is enough for right now.")
+                        .doodleFont(18, relativeTo: .body)
+                        .multilineTextAlignment(.center)
+                    ProgressView(value: Double(currentEventIndex), total: Double(max(1, chart.events.count)))
+                        .tint(Color.chartflowText)
+                        .accessibilityLabel("Routine progress")
+                }
+                .padding(26).frame(maxWidth: .infinity)
+                .chartflowBox(cornerRadius: 28, wobble: 1.4, fillColor: .tasqSage,
+                              strokeColor: .chartflowText, lineWidth: 1.8)
+
+                if let event = currentEvent, !event.subtasks.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Little steps").doodleFont(22, relativeTo: .headline).bold()
+                        ForEach(event.subtasks.indices, id: \.self) { index in
+                            Button {
+                                chart.events[currentEventIndex].subtasks[index].isCompleted.toggle()
+                            } label: {
+                                HStack(spacing: 14) {
+                                    TasqIcon(event.subtasks[index].isCompleted ? "checkmark.circle.fill" : "circle", size: 20)
+                                    Text(event.subtasks[index].name.isEmpty ? "Step \(index + 1)" : event.subtasks[index].name)
+                                        .strikethrough(event.subtasks[index].isCompleted)
+                                    Spacer()
+                                }
+                                .doodleFont(20, relativeTo: .body)
+                                .frame(minHeight: 46).contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                                .accessibilityValue(event.subtasks[index].isCompleted ? "Complete" : "Incomplete")
+                        }
+                    }.padding(20)
+                        .chartflowBox(fillColor: .chartflowSurface, strokeColor: .chartflowText, lineWidth: 1.3)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("UP NEXT").doodleFont(14, relativeTo: .caption).bold()
+                    if chart.events.indices.contains(currentEventIndex + 1) {
+                        let next = chart.events[currentEventIndex + 1]
+                        Text("\(next.name.isEmpty ? "Next task" : next.name) · \(next.durationMinutes) min")
+                            .doodleFont(22, relativeTo: .body)
+                    } else {
+                        Text("A little celebration. This is your last step.")
+                            .doodleFont(22, relativeTo: .body)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                if notificationsUnavailable {
+                    Text("Notifications are off. Enable them in iOS Settings for task reminders while Tasq is closed.")
+                        .doodleFont(16, relativeTo: .callout)
+                        .foregroundStyle(Color.chartflowSecondaryText)
+                }
+            }
+            .padding(24).frame(maxWidth: 650).frame(maxWidth: .infinity)
+        }
+    }
+
+    private var routineControls: some View {
+        VStack(spacing: 12) {
+            if isRunning {
+                if showFlowDuringRun {
+                    Text("\(isPaused ? "Paused · " : "")\(formattedTime(secondsRemaining)) remaining")
+                        .doodleFont(24, relativeTo: .title2)
+                }
+                HStack(spacing: 12) {
+                    Button {
+                        if isPaused { resumeTimer() } else { pauseTimer() }
+                    } label: {
+                        Text(isPaused ? "Resume" : "Pause").frame(maxWidth: .infinity)
+                    }.buttonStyle(DoodleButtonStyle())
+                    Button { advanceToNext() } label: {
+                        HStack {
+                            Text(currentEventIndex == chart.events.count - 1 ? "Finish" : "Done")
+                            TasqIcon("checkmark", size: 16)
+                        }.frame(maxWidth: .infinity)
+                    }.buttonStyle(DoodleButtonStyle(prominent: true))
+                }
+                Button("Stop routine") { showStopConfirmation = true }
+                    .doodleFont(16, relativeTo: .caption)
+                    .foregroundStyle(Color.chartflowSecondaryText)
+                    .frame(minHeight: 44)
+            } else {
+                HStack(spacing: 16) {
+                    Button { zoomScale = max(0.5, zoomScale - 0.1) } label: {
+                        TasqIcon("minus.magnifyingglass", size: 20).frame(width: 44, height: 44)
+                    }.accessibilityLabel("Zoom out")
+                    Text("\(Int(zoomScale * 100))%")
+                        .doodleFont(17, relativeTo: .body)
+                    Button { zoomScale = min(2, zoomScale + 0.1) } label: {
+                        TasqIcon("plus.magnifyingglass", size: 20).frame(width: 44, height: 44)
+                    }.accessibilityLabel("Zoom in")
+                    Spacer()
+                    Text("\(chart.totalMinutes) min")
+                        .doodleFont(18, relativeTo: .body)
+                }
+                HStack(spacing: 12) {
+                    Button {
+                        finishRenaming()
+                        isEditingAll.toggle()
+                    } label: { Text(isEditingAll ? "Save edits" : "Edit plan") }
+                        .buttonStyle(DoodleButtonStyle())
+                        .disabled(chart.events.isEmpty)
+                    Button {
+                        finishRenaming()
+                        isEditingAll = false
+                        startTimer()
+                    } label: { Text("Start routine").frame(maxWidth: .infinity) }
+                        .buttonStyle(DoodleButtonStyle(prominent: true))
+                        .disabled(chart.events.isEmpty)
                 }
             }
         }
-        .onChange(of: notificationDelegate.shouldStartTimer) { _, should in
-            if should && !isRunning {
-                startTimer()
-                notificationDelegate.shouldStartTimer = false
-            }
-        }
-        .sheet(isPresented: $showDynamicSetupWizard) {
-            DynamicScheduleWizardView(chart: $chart)
-                .interactiveDismissDisabled(chart.dynamicConfiguration?.setupCompleted == false)
-        }
-        .sheet(isPresented: $showAlarmPicker) {
-            VStack(spacing: 16) {
-                Text("Set Alarm Time")
-                    .font(.custom("ChartflowHand-Regular", size: 22))
-                    .fontWeight(.bold)
-                    .padding(.top, 24)
+        .padding(.horizontal, 22).padding(.top, 12).padding(.bottom, 8)
+        .foregroundStyle(Color.chartflowText)
+        .background(Color.chartflowBackground)
+        .overlay(alignment: .top) { Rectangle().fill(Color.chartflowText.opacity(0.15)).frame(height: 1) }
+    }
 
+    private var completionContent: some View {
+        ScrollView {
+            VStack(spacing: 23) {
+                DoodleSun()
+                DoodleBadge(title: "LOOK AT YOU GO")
+                Text("A little effort.\nA lovely finish.")
+                    .doodleFont(38, relativeTo: .largeTitle).bold()
+                    .multilineTextAlignment(.center)
+                Text("You've reached the end of \(chart.name). Take a moment for yourself.")
+                    .doodleFont(22, relativeTo: .body)
+                    .multilineTextAlignment(.center)
+                Button("Back to my day") { dismiss() }
+                    .buttonStyle(DoodleButtonStyle(prominent: true))
+                Button("See my plan") { showCompletion = false }
+                    .buttonStyle(DoodleButtonStyle())
+            }
+            .padding(28).frame(maxWidth: 600).frame(maxWidth: .infinity)
+        }
+    }
+
+    private var alarmPicker: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                DoodleSectionTitle(title: "A gentle nudge", subtitle: "A daily reminder to start this routine.")
                 HStack(spacing: 0) {
                     Picker("Hour", selection: $alarmHour) {
-                        ForEach(1...12, id: \.self) { h in
-                            Text("\(h)")
-                                .font(.custom("ChartflowHand-Regular", size: 18))
-                                .tag(h)
-                        }
+                        ForEach(1...12, id: \.self) { Text("\($0)").tag($0) }
                     }
-                    .pickerStyle(.wheel)
-                    .frame(width: 80)
-                    .clipped()
-
                     Text(":")
-                        .font(.custom("ChartflowHand-Regular", size: 24))
-
                     Picker("Minute", selection: $alarmMinute) {
-                        ForEach(0...59, id: \.self) { m in
-                            Text(String(format: "%02d", m))
-                                .font(.custom("ChartflowHand-Regular", size: 18))
-                                .tag(m)
-                        }
+                        ForEach(0...59, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
                     }
-                    .pickerStyle(.wheel)
-                    .frame(width: 80)
-                    .clipped()
-
                     Picker("AM/PM", selection: $alarmIsAM) {
                         Text("AM").tag(true)
                         Text("PM").tag(false)
                     }
-                    .pickerStyle(.wheel)
-                    .frame(width: 80)
-                    .clipped()
                 }
-                .frame(height: 180)
-
+                .pickerStyle(.wheel)
+                .frame(height: 170)
+                .padding(12)
+                .chartflowBox(fillColor: .tasqLilac, strokeColor: .chartflowText, lineWidth: 1.5)
                 Button {
+                    requestNotificationPermission()
                     chart.alarmHour = alarmHour
                     chart.alarmMinute = alarmMinute
                     chart.alarmIsAM = alarmIsAM
+                    chart.alarmEnabled = true
                     scheduleAlarmNotification()
+                    progressStore.commitSave()
                     showAlarmPicker = false
-                    haptic.impactOccurred()
-                } label: {
-                    Text("Set Alarm")
-                        .font(.custom("ChartflowHand-Regular", size: 18))
-                        .foregroundStyle(Color.chartflowBackground)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.chartflowText)
-                        .cornerRadius(14)
-                        .padding(.horizontal, 24)
-                }
-                .padding(.bottom, 24)
+                } label: { Text("Save reminder").frame(maxWidth: .infinity) }
+                    .buttonStyle(DoodleButtonStyle(prominent: true))
+                Button("Cancel") { showAlarmPicker = false }
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .presentationDetents([.height(340)])
+            .doodleFont(20, relativeTo: .body)
+            .foregroundStyle(Color.chartflowText)
+            .padding(26).frame(maxWidth: 600).frame(maxWidth: .infinity)
         }
+        .background(PolkaDotBackground().ignoresSafeArea())
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func finishRenaming() {
+        if chart.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { chart.name = "Untitled Routine" }
+        isEditingTitle = false
+        progressStore.commitSave()
     }
 }
 
@@ -1122,12 +999,8 @@ struct FlowNodeView: View {
                 if isRunning {
                     if isCurrentTask && !isSubtask {
                         successHaptic.notificationOccurred(.success)
-                        withAnimation(.easeInOut(duration: 1.0)) {
-                            event.isCompleted = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            onComplete()
-                        }
+                        event.isCompleted = true
+                        onComplete()
                     }
                 } else if !isEditingAll {
                     haptic.impactOccurred()

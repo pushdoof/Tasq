@@ -244,66 +244,7 @@ extension Chart {
     }
 
     static func generatedEvents(from configuration: DynamicScheduleConfiguration) -> [ChartEvent] {
-        let tasks = configuration.dailyTasks.filter { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        guard !tasks.isEmpty else {
-            return [ChartEvent(name: "Add daily tasks", durationMinutes: configuration.minimumTaskMinutes)]
-        }
-
-        let slotMinutes = max(configuration.minimumTaskMinutes * tasks.count, minutesBetweenStartAndEnd(in: configuration))
-        let minimumTotal = configuration.minimumTaskMinutes * tasks.count
-        let flexibleMinutes = max(0, slotMinutes - minimumTotal)
-        let timeWeightTotal = tasks.reduce(0.0) { total, task in
-            total + (1.0 / Double(max(1, task.timeRank)))
-        }
-
-        var scheduledTasks = tasks.map { task -> ScheduledDynamicTask in
-            let zipfShare = (1.0 / Double(max(1, task.timeRank))) / max(timeWeightTotal, 0.001)
-            let duration = configuration.minimumTaskMinutes + Int((Double(flexibleMinutes) * zipfShare).rounded())
-            let priority = pow(Double(max(1, task.importanceRank)), configuration.importanceBias) / Double(max(1, task.timeRank))
-            return ScheduledDynamicTask(task: task, durationMinutes: max(configuration.minimumTaskMinutes, duration), priority: priority)
-        }
-
-        scheduledTasks.sort { first, second in
-            if first.task.hasFixedStartTime != second.task.hasFixedStartTime {
-                return first.task.hasFixedStartTime
-            }
-            if first.fixedStartMinutes != second.fixedStartMinutes {
-                return (first.fixedStartMinutes ?? Int.max) < (second.fixedStartMinutes ?? Int.max)
-            }
-            return first.priority > second.priority
-        }
-
-        var cursor = minutesFromMidnight(hour: configuration.startHour, minute: configuration.startMinute, isAM: configuration.startIsAM)
-        return scheduledTasks.map { scheduled in
-            if let fixedStartMinutes = scheduled.fixedStartMinutes {
-                cursor = fixedStartMinutes
-            }
-            let title = configuration.includeStartTimesInTitles
-                ? "\(formattedClockTime(totalMinutes: cursor)) - \(scheduled.task.name)"
-                : scheduled.task.name
-            cursor += scheduled.durationMinutes
-            return ChartEvent(name: title, durationMinutes: scheduled.durationMinutes)
-        }
-    }
-
-    private struct ScheduledDynamicTask {
-        var task: DynamicScheduleTask
-        var durationMinutes: Int
-        var priority: Double
-
-        var fixedStartMinutes: Int? {
-            guard let hour = task.fixedStartHour, let minute = task.fixedStartMinute else { return nil }
-            return Chart.minutesFromMidnight(hour: hour, minute: minute, isAM: task.fixedStartIsAM)
-        }
-    }
-
-    private static func minutesBetweenStartAndEnd(in configuration: DynamicScheduleConfiguration) -> Int {
-        let start = minutesFromMidnight(hour: configuration.startHour, minute: configuration.startMinute, isAM: configuration.startIsAM)
-        let end = minutesFromMidnight(hour: configuration.endHour, minute: configuration.endMinute, isAM: configuration.endIsAM)
-        if end > start {
-            return end - start
-        }
-        return (24 * 60 - start) + end
+        dynamicPlan(from: configuration).events
     }
 
     static func minutesFromMidnight(hour: Int, minute: Int, isAM: Bool) -> Int {
